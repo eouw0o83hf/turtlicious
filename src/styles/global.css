@@ -34,8 +34,7 @@ textarea {
   width: 100vw;
 }
 
-.scanlines,
-.vignette {
+.scanlines {
   inset: 0;
   pointer-events: none;
   position: fixed;
@@ -50,15 +49,6 @@ textarea {
     rgb(0 0 0 / 7%) 4px
   );
   z-index: 100;
-}
-
-.vignette {
-  background: radial-gradient(
-    ellipse at center,
-    transparent 55%,
-    rgb(0 0 0 / 70%) 100%
-  );
-  z-index: 99;
 }
 
 .top-bar,
@@ -84,6 +74,7 @@ textarea {
 }
 
 .brand-mark {
+  color: #33ff33;
   gap: 12px;
   font-size: 22px;
   letter-spacing: 0.12em;
@@ -101,7 +92,7 @@ textarea {
 
 .shortcut,
 .status-bar {
-  color: rgb(51 255 51 / 45%);
+  color: #33ff33;
   letter-spacing: 0.1em;
 }
 
@@ -160,7 +151,7 @@ textarea {
 
 .line-numbers {
   border-right: 1px solid rgb(51 255 51 / 12%);
-  color: rgb(51 255 51 / 28%);
+  color: #33ff33;
   flex-shrink: 0;
   line-height: 1.75rem;
   overflow: hidden;
@@ -200,10 +191,53 @@ textarea {
   color: #33ff33;
 }
 
-.output-pane iframe {
-  background: #000;
-  border: 0;
+.output-pane {
+  background:
+    linear-gradient(rgb(51 255 51 / 6%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(51 255 51 / 6%) 1px, transparent 1px), #000;
+  background-size: 32px 32px;
+  flex-direction: column;
+  padding: 16px;
+}
+
+.sketch-frame {
+  align-items: center;
+  border: 1px solid rgb(51 255 51 / 18%);
+  box-shadow:
+    inset 0 0 32px rgb(51 255 51 / 8%),
+    0 0 24px rgb(51 255 51 / 8%);
+  display: flex;
   flex: 1;
+  justify-content: center;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.sketch-frame svg {
+  display: block;
+  height: 100%;
+  max-height: 100%;
+  max-width: 100%;
+  width: 100%;
+}
+
+.sketch-frame line {
+  filter: drop-shadow(0 0 4px rgb(51 255 51 / 85%));
+}
+
+.turtle-errors {
+  border-top: 1px solid rgb(255 51 51 / 35%);
+  color: #ff6666;
+  flex-shrink: 0;
+  font-size: 17px;
+  letter-spacing: 0.06em;
+  line-height: 1.25;
+  list-style-position: inside;
+  margin: 10px 0 0;
+  max-height: 6rem;
+  overflow: auto;
+  padding: 8px 0 0;
+  text-shadow: 0 0 8px rgb(255 51 51 / 45%);
 }
 
 .status-bar {

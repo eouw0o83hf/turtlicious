@@ -4,11 +4,16 @@ import { describe, expect, it } from 'vitest';
 import App from './App';
 
 describe('App', () => {
-  it('renders the code-to-image workspace', () => {
+  it('renders the live turtle workspace', () => {
     render(<App />);
 
     expect(screen.getByAltText(/turtlicious/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /run/i })).toBeInTheDocument();
-    expect(screen.getByLabelText(/editable html source/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /svg/i })).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/editable turtle source/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('img', { name: /turtle sketch/i }),
+    ).toBeInTheDocument();
   });
 });
