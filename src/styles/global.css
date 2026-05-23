@@ -98,9 +98,7 @@ textarea {
 
 .shortcut,
 .status-bar,
-.run-btn,
-.crt-textarea,
-.line-numbers {
+.run-btn {
   font-size: 18px;
 }
 
@@ -141,18 +139,48 @@ textarea {
 .editor-pane,
 .output-pane {
   display: flex;
+  flex: 0 0 auto;
   overflow: hidden;
-  width: 50%;
 }
 
 .editor-pane {
-  border-right: 1px solid rgb(51 255 51 / 18%);
+  min-width: 18rem;
+}
+
+.output-pane {
+  min-width: 20rem;
+}
+
+.pane-divider {
+  background: rgb(51 255 51 / 16%);
+  box-shadow:
+    0 0 10px rgb(51 255 51 / 20%),
+    inset 0 0 8px rgb(51 255 51 / 18%);
+  cursor: col-resize;
+  flex: 0 0 10px;
+  position: relative;
+  touch-action: none;
+}
+
+.pane-divider::before {
+  background: #33ff33;
+  box-shadow: 0 0 8px rgb(51 255 51 / 85%);
+  content: '';
+  inset: 0 4px;
+  position: absolute;
+}
+
+.pane-divider:hover,
+.pane-divider:focus-visible {
+  background: rgb(51 255 51 / 28%);
+  outline: none;
 }
 
 .line-numbers {
   border-right: 1px solid rgb(51 255 51 / 12%);
   color: #33ff33;
   flex-shrink: 0;
+  font-size: 21px;
   line-height: 1.75rem;
   overflow: hidden;
   padding: 8px 10px 8px 0;
@@ -177,6 +205,7 @@ textarea {
   caret-color: #33ff33;
   color: #33ff33;
   flex: 1;
+  font-size: 21px;
   line-height: 1.75rem;
   outline: none;
   overflow: auto;
@@ -211,9 +240,25 @@ textarea {
   justify-content: center;
   min-height: 0;
   overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
 }
 
-.sketch-frame svg {
+.sketch-frame.is-panning {
+  cursor: grabbing;
+}
+
+.sketch-canvas {
+  align-items: center;
+  display: flex;
+  height: 100%;
+  justify-content: center;
+  transform-origin: center;
+  width: 100%;
+}
+
+.sketch-canvas svg {
   display: block;
   height: 100%;
   max-height: 100%;
@@ -221,7 +266,7 @@ textarea {
   width: 100%;
 }
 
-.sketch-frame line {
+.sketch-canvas line {
   filter: drop-shadow(0 0 4px rgb(51 255 51 / 85%));
 }
 
@@ -289,8 +334,19 @@ textarea {
     flex-direction: column;
   }
 
+  .pane-divider {
+    cursor: row-resize;
+    flex-basis: 10px;
+    width: 100%;
+  }
+
+  .pane-divider::before {
+    inset: 4px 0;
+  }
+
   .editor-pane,
   .output-pane {
+    flex-basis: auto !important;
     min-height: 50%;
     width: 100%;
   }

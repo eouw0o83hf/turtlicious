@@ -4,18 +4,34 @@ import {
   useRef,
   useState,
   type KeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+  type WheelEvent,
 } from 'react';
 
 import { DEFAULT_CODE, createSvgMarkup, interpretLogo } from './logo';
 
 const GLOW = '0 0 8px rgba(51, 255, 51, 0.75)';
+const DEFAULT_LEFT_PANE_WIDTH = 34;
+const MIN_LEFT_PANE_WIDTH = 24;
+const MAX_LEFT_PANE_WIDTH = 70;
+const MIN_ZOOM = 0.35;
+const MAX_ZOOM = 5;
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
 
 function App() {
   const [code, setCode] = useState(DEFAULT_CODE);
   const [cursorPos, setCursorPos] = useState({ line: 1, col: 1 });
   const [isFocused, setIsFocused] = useState(false);
+  const [leftPaneWidth, setLeftPaneWidth] = useState(DEFAULT_LEFT_PANE_WIDTH);
+  const [sketchView, setSketchView] = useState({ x: 0, y: 0, scale: 1 });
+  const [isPanning, setIsPanning] = useState(false);
+  const workspaceRef = useRef<HTMLElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const lineNumbersRef = useRef<HTMLDivElement>(null);
+  const panStartRef = useRef({ pointerX: 0, pointerY: 0, viewX: 0, viewY: 0 });
   const result = useMemo(() => interpretLogo(code), [code]);
   const svgMarkup = useMemo(() => createSvgMarkup(result), [result]);
 
@@ -64,6 +80,79 @@ function App() {
     if (textarea && lineNumbers) lineNumbers.scrollTop = textarea.scrollTop;
   }, []);
 
+  const handlePaneResizeStart = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      const workspace = workspaceRef.current;
+      if (!workspace) return;
+
+      const resize = (pointerEvent: PointerEvent) => {
+        const rect = workspace.getBoundingClientRect();
+        const nextWidth =
+          ((pointerEvent.clientX - rect.left) / rect.width) * 100;
+        setLeftPaneWidth(
+          clamp(nextWidth, MIN_LEFT_PANE_WIDTH, MAX_LEFT_PANE_WIDTH),
+        );
+      };
+
+      const stopResize = () => {
+        window.removeEventListener('pointermove', resize);
+        window.removeEventListener('pointerup', stopResize);
+      };
+
+      window.addEventListener('pointermove', resize);
+      window.addEventListener('pointerup', stopResize);
+    },
+    [],
+  );
+
+  const handleSketchPointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (event.button !== 0) return;
+      event.currentTarget.setPointerCapture(event.pointerId);
+      setIsPanning(true);
+      panStartRef.current = {
+        pointerX: event.clientX,
+        pointerY: event.clientY,
+        viewX: sketchView.x,
+        viewY: sketchView.y,
+      };
+    },
+    [sketchView.x, sketchView.y],
+  );
+
+  const handleSketchPointerMove = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (!isPanning) return;
+      const start = panStartRef.current;
+      setSketchView((currentView) => ({
+        ...currentView,
+        x: start.viewX + event.clientX - start.pointerX,
+        y: start.viewY + event.clientY - start.pointerY,
+      }));
+    },
+    [isPanning],
+  );
+
+  const handleSketchPointerUp = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+      setIsPanning(false);
+    },
+    [],
+  );
+
+  const handleSketchWheel = useCallback((event: WheelEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const zoomFactor = event.deltaY < 0 ? 1.12 : 0.88;
+    setSketchView((currentView) => ({
+      ...currentView,
+      scale: clamp(currentView.scale * zoomFactor, MIN_ZOOM, MAX_ZOOM),
+    }));
+  }, []);
+
   const lineCount = code.split('\n').length;
   const status =
     result.errors.length > 0
@@ -92,8 +181,16 @@ function App() {
         </div>
       </header>
 
-      <main className="workspace" aria-label="Turtle workspace">
-        <section className="editor-pane" aria-label="Turtle editor">
+      <main
+        ref={workspaceRef}
+        className="workspace"
+        aria-label="Turtle workspace"
+      >
+        <section
+          className="editor-pane"
+          style={{ flexBasis: `${leftPaneWidth}%` }}
+          aria-label="Turtle editor"
+        >
           <div ref={lineNumbersRef} className="line-numbers" aria-hidden="true">
             {Array.from({ length: lineCount }, (_, index) => (
               <div key={index}>{index + 1}</div>
@@ -122,11 +219,39 @@ function App() {
           />
         </section>
 
-        <section className="output-pane" aria-label="Turtle sketch output">
+        <div
+          className="pane-divider"
+          role="separator"
+          aria-label="Resize panes"
+          aria-orientation="vertical"
+          aria-valuemin={MIN_LEFT_PANE_WIDTH}
+          aria-valuemax={MAX_LEFT_PANE_WIDTH}
+          aria-valuenow={Math.round(leftPaneWidth)}
+          onPointerDown={handlePaneResizeStart}
+        />
+
+        <section
+          className="output-pane"
+          style={{ flexBasis: `${100 - leftPaneWidth}%` }}
+          aria-label="Turtle sketch output"
+        >
           <div
-            className="sketch-frame"
-            dangerouslySetInnerHTML={{ __html: svgMarkup }}
-          />
+            className={`sketch-frame${isPanning ? ' is-panning' : ''}`}
+            aria-label="Pan and zoom turtle sketch"
+            onPointerDown={handleSketchPointerDown}
+            onPointerMove={handleSketchPointerMove}
+            onPointerUp={handleSketchPointerUp}
+            onPointerCancel={handleSketchPointerUp}
+            onWheel={handleSketchWheel}
+          >
+            <div
+              className="sketch-canvas"
+              style={{
+                transform: `translate(${sketchView.x}px, ${sketchView.y}px) scale(${sketchView.scale})`,
+              }}
+              dangerouslySetInnerHTML={{ __html: svgMarkup }}
+            />
+          </div>
           {result.errors.length > 0 && (
             <ol className="turtle-errors" aria-label="Turtle errors">
               {result.errors.slice(0, 4).map((error) => (
@@ -149,6 +274,7 @@ function App() {
           LN {cursorPos.line} &nbsp;COL {cursorPos.col}
         </span>
         <span className="status-spacer">TURTLE</span>
+        <span>{Math.round(sketchView.scale * 100)}% ZOOM</span>
         <span>{result.segments.length} TRAILS</span>
         <span>{result.stepCount} STEPS</span>
       </footer>

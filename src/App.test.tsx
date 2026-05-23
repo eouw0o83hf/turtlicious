@@ -10,10 +10,17 @@ describe('App', () => {
     expect(screen.getByAltText(/turtlicious/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /svg/i })).toBeInTheDocument();
     expect(
+      screen.getByRole('separator', { name: /resize panes/i }),
+    ).toBeInTheDocument();
+    expect(
       screen.getByLabelText(/editable turtle source/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/pan and zoom turtle sketch/i),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('img', { name: /turtle sketch/i }),
     ).toBeInTheDocument();
+    expect(screen.getByText(/100% zoom/i)).toBeInTheDocument();
   });
 });
