@@ -60,19 +60,19 @@ Example deploy policy shape, replacing `YOUR_BUCKET_NAME` with your bucket:
 
 ```json
 {
-   "Version": "2012-10-17",
-   "Statement": [
-      {
-         "Effect": "Allow",
-         "Action": "s3:ListBucket",
-         "Resource": "arn:aws:s3:::YOUR_BUCKET_NAME"
-      },
-      {
-         "Effect": "Allow",
-         "Action": ["s3:DeleteObject", "s3:PutObject"],
-         "Resource": "arn:aws:s3:::YOUR_BUCKET_NAME/*"
-      }
-   ]
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::YOUR_BUCKET_NAME"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["s3:DeleteObject", "s3:PutObject"],
+      "Resource": "arn:aws:s3:::YOUR_BUCKET_NAME/*"
+    }
+  ]
 }
 ```
 
