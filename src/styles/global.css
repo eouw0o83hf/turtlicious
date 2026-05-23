@@ -144,7 +144,15 @@ textarea {
 }
 
 .editor-pane {
+  flex-direction: column;
   min-width: 18rem;
+}
+
+.editor-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .output-pane {

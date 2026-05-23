@@ -6,6 +6,12 @@ function expectPoint(actual: number, expected: number) {
   expect(actual).toBeCloseTo(expected, 6);
 }
 
+function getViewBox(svg: string) {
+  const match = svg.match(/viewBox="([^"]+)"/);
+  if (!match) throw new Error('SVG is missing a viewBox.');
+  return match[1].split(' ').map(Number);
+}
+
 describe('interpretLogo', () => {
   it('moves forward and turns the turtle through 2d space', () => {
     const result = interpretLogo('FD 10 RT 90 FD 5');
@@ -77,5 +83,24 @@ describe('createSvgMarkup', () => {
     expect(svg).toContain('aria-label="Turtle sketch"');
     expect(svg).toContain('<line x1="0.00" y1="0.00" x2="0.00" y2="-10.00" />');
     expect(svg).toContain('<polygon');
+  });
+
+  it('keeps the default sketch bounds for drawings that fit', () => {
+    const svg = createSvgMarkup(interpretLogo('FD 10 RT 90 FD 10'));
+
+    expect(getViewBox(svg)).toEqual([-320, -240, 640, 480]);
+  });
+
+  it('expands the sketch bounds when the turtle traverses past an edge', () => {
+    const svg = createSvgMarkup(interpretLogo('RT 90 FD 500'));
+    const [minX, minY, width, height] = getViewBox(svg);
+
+    expect(minX).toBe(-320);
+    expect(minY).toBe(-240);
+    expect(width).toBeGreaterThan(640);
+    expect(height).toBe(480);
+    expect(svg).toContain(
+      `<rect x="${minX}" y="${minY}" width="${width}" height="${height}" fill="#000000" />`,
+    );
   });
 });

@@ -191,32 +191,45 @@ function App() {
           style={{ flexBasis: `${leftPaneWidth}%` }}
           aria-label="Turtle editor"
         >
-          <div ref={lineNumbersRef} className="line-numbers" aria-hidden="true">
-            {Array.from({ length: lineCount }, (_, index) => (
-              <div key={index}>{index + 1}</div>
-            ))}
-          </div>
+          <div className="editor-body">
+            <div
+              ref={lineNumbersRef}
+              className="line-numbers"
+              aria-hidden="true"
+            >
+              {Array.from({ length: lineCount }, (_, index) => (
+                <div key={index}>{index + 1}</div>
+              ))}
+            </div>
 
-          <textarea
-            ref={textareaRef}
-            className="crt-textarea"
-            value={code}
-            onChange={(event) => {
-              setCode(event.target.value);
-              updateCursorPos();
-            }}
-            onKeyDown={handleKeyDown}
-            onSelect={updateCursorPos}
-            onClick={updateCursorPos}
-            onKeyUp={updateCursorPos}
-            onScroll={syncScroll}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
-            spellCheck={false}
-            autoCorrect="off"
-            autoCapitalize="off"
-            aria-label="Editable turtle source"
-          />
+            <textarea
+              ref={textareaRef}
+              className="crt-textarea"
+              value={code}
+              onChange={(event) => {
+                setCode(event.target.value);
+                updateCursorPos();
+              }}
+              onKeyDown={handleKeyDown}
+              onSelect={updateCursorPos}
+              onClick={updateCursorPos}
+              onKeyUp={updateCursorPos}
+              onScroll={syncScroll}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
+              spellCheck={false}
+              autoCorrect="off"
+              autoCapitalize="off"
+              aria-label="Editable turtle source"
+            />
+          </div>
+          {result.errors.length > 0 && (
+            <ol className="turtle-errors" aria-label="Turtle errors">
+              {result.errors.slice(0, 4).map((error) => (
+                <li key={error}>{error}</li>
+              ))}
+            </ol>
+          )}
         </section>
 
         <div
@@ -252,13 +265,6 @@ function App() {
               dangerouslySetInnerHTML={{ __html: svgMarkup }}
             />
           </div>
-          {result.errors.length > 0 && (
-            <ol className="turtle-errors" aria-label="Turtle errors">
-              {result.errors.slice(0, 4).map((error) => (
-                <li key={error}>{error}</li>
-              ))}
-            </ol>
-          )}
         </section>
       </main>
 
