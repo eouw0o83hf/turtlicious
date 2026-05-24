@@ -19,12 +19,16 @@ export type Segment = {
   y1: number;
   x2: number;
   y2: number;
+  /** Per-segment color override; falls back to LogoStyle.pathColor when absent. */
+  color?: string;
 };
 
 /** Visual style properties that layers can mutate. */
 export type LogoStyle = {
   pathColor: string;
   turtleColor: string;
+  /** Whether to apply a drop-shadow glow to the path group. */
+  glow: boolean;
 };
 
 /** The value carried through the rendering stack. */

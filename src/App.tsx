@@ -8,7 +8,12 @@ import {
   type WheelEvent,
 } from 'react';
 
-import { DEFAULT_CODE, createSvgMarkup, renderLogoStack } from './renderer';
+import {
+  DEFAULT_CODE,
+  createSvgMarkup,
+  renderLogoStack,
+  type BrushName,
+} from './renderer';
 
 const GLOW = '0 0 8px rgba(51, 255, 51, 0.75)';
 const DEFAULT_LEFT_PANE_WIDTH = 34;
@@ -28,11 +33,15 @@ function App() {
   const [leftPaneWidth, setLeftPaneWidth] = useState(DEFAULT_LEFT_PANE_WIDTH);
   const [sketchView, setSketchView] = useState({ x: 0, y: 0, scale: 1 });
   const [isPanning, setIsPanning] = useState(false);
+  const [brushName, setBrushName] = useState<BrushName>('default');
   const workspaceRef = useRef<HTMLElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const lineNumbersRef = useRef<HTMLDivElement>(null);
   const panStartRef = useRef({ pointerX: 0, pointerY: 0, viewX: 0, viewY: 0 });
-  const renderState = useMemo(() => renderLogoStack(code), [code]);
+  const renderState = useMemo(
+    () => renderLogoStack(code, brushName),
+    [code, brushName],
+  );
   const result = renderState.value;
   const errors = renderState.errors;
   const svgMarkup = useMemo(() => createSvgMarkup(result), [result]);
@@ -177,6 +186,15 @@ function App() {
 
         <div className="toolbar">
           <span className="shortcut">LIVE TURTLE RENDER</span>
+          <select
+            className="brush-select"
+            value={brushName}
+            onChange={(e) => setBrushName(e.target.value as BrushName)}
+            aria-label="Select brush"
+          >
+            <option value="default">⬛ DEFAULT</option>
+            <option value="rainbow">🌈 RAINBOW</option>
+          </select>
           <button className="run-btn" onClick={handleDownloadSvg} type="button">
             ⇩ SVG
           </button>

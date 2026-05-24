@@ -10,6 +10,9 @@ describe('App', () => {
     expect(screen.getByAltText(/turtlicious/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /svg/i })).toBeInTheDocument();
     expect(
+      screen.getByRole('combobox', { name: /select brush/i }),
+    ).toBeInTheDocument();
+    expect(
       screen.getByRole('separator', { name: /resize panes/i }),
     ).toBeInTheDocument();
     expect(

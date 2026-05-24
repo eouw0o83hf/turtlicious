@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   RenderMonad,
+  brushLayer,
   createSvgMarkup,
   interpretLogo,
   logoInterpreterLayer,
@@ -133,5 +134,37 @@ describe('render stack', () => {
 
     expect(svg).toContain('stroke="#33ff33"');
     expect(svg).toContain('fill="#33ff33"');
+  });
+});
+
+describe('brush layer', () => {
+  it('default brush leaves segments and style unchanged', () => {
+    const base = RenderMonad.of('FD 10 RT 90 FD 5').chain(logoInterpreterLayer);
+    const brushed = base.chain(brushLayer('default'));
+
+    expect(brushed.value.segments).toHaveLength(2);
+    expect(brushed.value.style.pathColor).toBe('#33ff33');
+    expect(brushed.value.style.glow).toBe(true);
+    expect(brushed.value.segments[0].color).toBeUndefined();
+  });
+
+  it('rainbow brush assigns per-segment hsl colors and disables glow', () => {
+    const base = RenderMonad.of('REPEAT 4 [ FD 10 RT 90 ]').chain(
+      logoInterpreterLayer,
+    );
+    const brushed = base.chain(brushLayer('rainbow'));
+
+    expect(brushed.value.style.glow).toBe(false);
+    brushed.value.segments.forEach((seg) => {
+      expect(seg.color).toMatch(/^hsl\(/);
+    });
+  });
+
+  it('rainbow svg contains per-segment stroke attributes', () => {
+    const stack = renderLogoStack('FD 10 RT 90 FD 10', 'rainbow');
+    const svg = createSvgMarkup(stack.value);
+
+    expect(svg).toContain('stroke="hsl(');
+    expect(svg).not.toContain('drop-shadow');
   });
 });

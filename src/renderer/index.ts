@@ -11,17 +11,14 @@ export {
   logoInterpreterLayer,
 } from './interpreter';
 export { createSvgMarkup } from './svg';
-export * from './layers';
-
-// ---------------------------------------------------------------------------
-// Default rendering stack: interpreter → red path mutation.
-// Compose a different stack by calling RenderMonad.of(source).chain(...)
-// with any selection of layers from the layers/ directory.
-// ---------------------------------------------------------------------------
+export { brushLayer, type BrushName } from './layers';
 
 import { RenderMonad } from './monad';
 import { logoInterpreterLayer } from './interpreter';
+import { brushLayer, type BrushName } from './layers';
 
-export function renderLogoStack(source: string) {
-  return RenderMonad.of(source).chain(logoInterpreterLayer);
+export function renderLogoStack(source: string, brush: BrushName = 'default') {
+  return RenderMonad.of(source)
+    .chain(logoInterpreterLayer)
+    .chain(brushLayer(brush));
 }

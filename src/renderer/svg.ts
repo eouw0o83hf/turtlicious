@@ -72,15 +72,20 @@ export function createSvgMarkup(result: LogoResult) {
     .join(' ');
 
   const lines = result.segments
-    .map(
-      (s) =>
-        `<line x1="${s.x1.toFixed(2)}" y1="${s.y1.toFixed(2)}" x2="${s.x2.toFixed(2)}" y2="${s.y2.toFixed(2)}" />`,
-    )
+    .map((s) => {
+      const stroke = s.color ?? result.style.pathColor;
+      const colorAttr = s.color ? ` stroke="${stroke}"` : '';
+      return `<line x1="${s.x1.toFixed(2)}" y1="${s.y1.toFixed(2)}" x2="${s.x2.toFixed(2)}" y2="${s.y2.toFixed(2)}"${colorAttr} />`;
+    })
     .join('\n    ');
+
+  const glowStyle = result.style.glow
+    ? ` style="filter: drop-shadow(0 0 4px ${result.style.pathColor}bf)"`
+    : '';
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox.minX} ${viewBox.minY} ${viewBox.width} ${viewBox.height}" role="img" aria-label="Turtle sketch">
   <rect x="${viewBox.minX}" y="${viewBox.minY}" width="${viewBox.width}" height="${viewBox.height}" fill="#000000" />
-  <g stroke="${result.style.pathColor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none" style="filter: drop-shadow(0 0 4px ${result.style.pathColor}bf)">
+  <g stroke="${result.style.pathColor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"${glowStyle}>
     ${lines}
   </g>
   <polygon points="${turtlePointMarkup}" fill="${result.style.turtleColor}" opacity="0.9" />

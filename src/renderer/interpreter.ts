@@ -36,6 +36,7 @@ const MAX_STEPS = 25_000;
 const DEFAULT_STYLE = {
   pathColor: LOGO_GREEN,
   turtleColor: LOGO_GREEN,
+  glow: true,
 };
 
 const COMMANDS_WITH_ARG = new Set([
