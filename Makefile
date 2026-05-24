@@ -1,9 +1,15 @@
-SHELL := /bin/sh
+SHELL := /bin/bash
 APP_NAME := turtlicious
 NPM := npm
 AWS := aws
 AWS_REGION ?= us-east-1
 NODE_MODULES_STAMP := node_modules/.install-stamp
+
+export NVM_DIR := $(HOME)/.nvm
+# Source nvm and activate the version pinned in .nvmrc before running Node tools.
+define nvm_use
+	[ -s "$(NVM_DIR)/nvm.sh" ] && . "$(NVM_DIR)/nvm.sh" && nvm use --silent
+endef
 
 .DEFAULT_GOAL := help
 
@@ -13,30 +19,30 @@ help: ## Show available targets.
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "%-18s %s\n", $$1, $$2}'
 
 $(NODE_MODULES_STAMP): package.json package-lock.json
-	$(NPM) ci
+	$(nvm_use) && $(NPM) ci
 	@touch $@
 
 install: $(NODE_MODULES_STAMP) ## Install dependencies from the lockfile when needed.
 
 run: install ## Install dependencies when needed and run the Vite dev server.
-	$(NPM) run dev
+	$(nvm_use) && $(NPM) run dev -- --open
 
 build: install ## Build the production app.
-	$(NPM) run build
+	$(nvm_use) && $(NPM) run build
 
 test: install ## Run unit tests once.
-	$(NPM) test
+	$(nvm_use) && $(NPM) test
 
 lint: install ## Run ESLint.
-	$(NPM) run lint
+	$(nvm_use) && $(NPM) run lint
 
 typecheck: install ## Run TypeScript checks.
-	$(NPM) run typecheck
+	$(nvm_use) && $(NPM) run typecheck
 
 check: lint typecheck test build ## Run all local verification.
 
 preview: install ## Preview the production build locally.
-	$(NPM) run preview
+	$(nvm_use) && $(NPM) run preview
 
 deploy: build ## Build and deploy dist/ to a preconfigured S3 website bucket.
 	@test -n "$(AWS_S3_BUCKET)" || (echo "AWS_S3_BUCKET is required"; exit 1)

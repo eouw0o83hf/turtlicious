@@ -8,7 +8,7 @@ import {
   type WheelEvent,
 } from 'react';
 
-import { DEFAULT_CODE, createSvgMarkup, interpretLogo } from './logo';
+import { DEFAULT_CODE, createSvgMarkup, renderLogoStack } from './renderer';
 
 const GLOW = '0 0 8px rgba(51, 255, 51, 0.75)';
 const DEFAULT_LEFT_PANE_WIDTH = 34;
@@ -32,7 +32,9 @@ function App() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const lineNumbersRef = useRef<HTMLDivElement>(null);
   const panStartRef = useRef({ pointerX: 0, pointerY: 0, viewX: 0, viewY: 0 });
-  const result = useMemo(() => interpretLogo(code), [code]);
+  const renderState = useMemo(() => renderLogoStack(code), [code]);
+  const result = renderState.value;
+  const errors = renderState.errors;
   const svgMarkup = useMemo(() => createSvgMarkup(result), [result]);
 
   const handleDownloadSvg = useCallback(() => {
@@ -155,8 +157,8 @@ function App() {
 
   const lineCount = code.split('\n').length;
   const status =
-    result.errors.length > 0
-      ? `${result.errors.length} TURTLE ERROR${result.errors.length === 1 ? '' : 'S'}`
+    errors.length > 0
+      ? `${errors.length} TURTLE ERROR${errors.length === 1 ? '' : 'S'}`
       : 'LIVE OUTPUT OK';
 
   return (
@@ -223,9 +225,9 @@ function App() {
               aria-label="Editable turtle source"
             />
           </div>
-          {result.errors.length > 0 && (
+          {errors.length > 0 && (
             <ol className="turtle-errors" aria-label="Turtle errors">
-              {result.errors.slice(0, 4).map((error) => (
+              {errors.slice(0, 4).map((error) => (
                 <li key={error}>{error}</li>
               ))}
             </ol>

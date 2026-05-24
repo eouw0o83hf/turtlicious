@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { createSvgMarkup, interpretLogo } from './logo';
+import {
+  RenderMonad,
+  createSvgMarkup,
+  interpretLogo,
+  logoInterpreterLayer,
+  renderLogoStack,
+} from './renderer';
 
 function expectPoint(actual: number, expected: number) {
   expect(actual).toBeCloseTo(expected, 6);
@@ -81,6 +87,7 @@ describe('createSvgMarkup', () => {
 
     expect(svg).toContain('<svg');
     expect(svg).toContain('aria-label="Turtle sketch"');
+    expect(svg).toContain('stroke="#33ff33"');
     expect(svg).toContain('<line x1="0.00" y1="0.00" x2="0.00" y2="-10.00" />');
     expect(svg).toContain('<polygon');
   });
@@ -102,5 +109,29 @@ describe('createSvgMarkup', () => {
     expect(svg).toContain(
       `<rect x="${minX}" y="${minY}" width="${width}" height="${height}" fill="#000000" />`,
     );
+  });
+});
+
+describe('render stack', () => {
+  it('composes stack members through the render monad contract', () => {
+    const stack = RenderMonad.of('FD 10').chain(logoInterpreterLayer);
+
+    expect(stack.errors).toEqual([]);
+    expect(stack.value.segments).toHaveLength(1);
+    expect(stack.value.style.pathColor).toBe('#33ff33');
+  });
+
+  it('propagates interpreter diagnostics through the stack', () => {
+    const stack = renderLogoStack('WIGGLE');
+
+    expect(stack.errors).toContain('Unknown command: WIGGLE');
+  });
+
+  it('renders paths with the default green color', () => {
+    const stack = renderLogoStack('FD 10');
+    const svg = createSvgMarkup(stack.value);
+
+    expect(svg).toContain('stroke="#33ff33"');
+    expect(svg).toContain('fill="#33ff33"');
   });
 });

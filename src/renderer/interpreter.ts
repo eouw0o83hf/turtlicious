@@ -1,3 +1,12 @@
+// ---------------------------------------------------------------------------
+// Logo / turtle language interpreter.
+// Parses Logo source text and produces a LogoResult carrying the drawn
+// segments, final turtle state, diagnostics, and base style.
+// ---------------------------------------------------------------------------
+
+import { RenderMonad, type RenderingStackMember } from './monad';
+import type { LogoResult, Segment, Turtle } from './types';
+
 export const DEFAULT_CODE = `; Turtlicious turtle sketch
 ; Commands: FD, BK, RT, LT, PU, PD, HOME, CS, REPEAT
 CS
@@ -20,47 +29,13 @@ REPEAT 36 [
   RT 20
 ]`;
 
-const SKETCH_WIDTH = 640;
-const SKETCH_HEIGHT = 480;
-const VIEWBOX_PADDING = 24;
+const LOGO_GREEN = '#33ff33';
 const MAX_REPEAT_COUNT = 1000;
 const MAX_STEPS = 25_000;
 
-type Turtle = {
-  x: number;
-  y: number;
-  heading: number;
-  penDown: boolean;
-};
-
-type Point = [number, number];
-
-type SketchBounds = {
-  minX: number;
-  minY: number;
-  maxX: number;
-  maxY: number;
-};
-
-export type Segment = {
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
-};
-
-export type LogoResult = {
-  segments: Segment[];
-  turtle: Turtle;
-  errors: string[];
-  stepCount: number;
-};
-
-const DEFAULT_BOUNDS: SketchBounds = {
-  minX: -SKETCH_WIDTH / 2,
-  minY: -SKETCH_HEIGHT / 2,
-  maxX: SKETCH_WIDTH / 2,
-  maxY: SKETCH_HEIGHT / 2,
+const DEFAULT_STYLE = {
+  pathColor: LOGO_GREEN,
+  turtleColor: LOGO_GREEN,
 };
 
 const COMMANDS_WITH_ARG = new Set([
@@ -103,31 +78,6 @@ function findClosingBracket(tokens: string[], openIndex: number) {
   }
 
   return -1;
-}
-
-function expandBounds(bounds: SketchBounds, [x, y]: Point) {
-  if (x < bounds.minX) bounds.minX = x - VIEWBOX_PADDING;
-  if (x > bounds.maxX) bounds.maxX = x + VIEWBOX_PADDING;
-  if (y < bounds.minY) bounds.minY = y - VIEWBOX_PADDING;
-  if (y > bounds.maxY) bounds.maxY = y + VIEWBOX_PADDING;
-}
-
-function getSketchBounds(result: LogoResult, turtlePoints: Point[]) {
-  const bounds = { ...DEFAULT_BOUNDS };
-
-  result.segments.forEach((segment) => {
-    expandBounds(bounds, [segment.x1, segment.y1]);
-    expandBounds(bounds, [segment.x2, segment.y2]);
-  });
-
-  turtlePoints.forEach((point) => expandBounds(bounds, point));
-
-  return {
-    minX: Math.floor(bounds.minX),
-    minY: Math.floor(bounds.minY),
-    width: Math.ceil(bounds.maxX) - Math.floor(bounds.minX),
-    height: Math.ceil(bounds.maxY) - Math.floor(bounds.minY),
-  };
 }
 
 export function interpretLogo(source: string): LogoResult {
@@ -249,42 +199,14 @@ export function interpretLogo(source: string): LogoResult {
     errors.push(`Stopped after ${MAX_STEPS.toLocaleString()} turtle steps.`);
   }
 
-  return { segments, turtle, errors, stepCount };
+  return { segments, turtle, errors, stepCount, style: DEFAULT_STYLE };
 }
 
-export function createSvgMarkup(result: LogoResult) {
-  const turtleRadians = (result.turtle.heading * Math.PI) / 180;
-  const turtlePoints: Point[] = [
-    [
-      result.turtle.x + Math.sin(turtleRadians) * 13,
-      result.turtle.y - Math.cos(turtleRadians) * 13,
-    ],
-    [
-      result.turtle.x + Math.sin(turtleRadians + 2.45) * 9,
-      result.turtle.y - Math.cos(turtleRadians + 2.45) * 9,
-    ],
-    [
-      result.turtle.x + Math.sin(turtleRadians - 2.45) * 9,
-      result.turtle.y - Math.cos(turtleRadians - 2.45) * 9,
-    ],
-  ];
-  const viewBox = getSketchBounds(result, turtlePoints);
-  const turtlePointMarkup = turtlePoints
-    .map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`)
-    .join(' ');
-
-  const lines = result.segments
-    .map(
-      (segment) =>
-        `<line x1="${segment.x1.toFixed(2)}" y1="${segment.y1.toFixed(2)}" x2="${segment.x2.toFixed(2)}" y2="${segment.y2.toFixed(2)}" />`,
-    )
-    .join('\n    ');
-
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox.minX} ${viewBox.minY} ${viewBox.width} ${viewBox.height}" role="img" aria-label="Turtle sketch">
-  <rect x="${viewBox.minX}" y="${viewBox.minY}" width="${viewBox.width}" height="${viewBox.height}" fill="#000000" />
-  <g stroke="#33ff33" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
-    ${lines}
-  </g>
-  <polygon points="${turtlePointMarkup}" fill="#33ff33" opacity="0.9" />
-</svg>`;
-}
+/** Stack layer: interpret Logo source text into a LogoResult. */
+export const logoInterpreterLayer: RenderingStackMember<string, LogoResult> = {
+  name: 'Logo interpreter',
+  run(source) {
+    const result = interpretLogo(source);
+    return new RenderMonad(result, result.errors);
+  },
+};
