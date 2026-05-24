@@ -97,20 +97,22 @@ star:
     expectPoint(result.turtle.heading, 720);
   });
 
-  it('substitutes numeric variables in later commands', () => {
+  it('substitutes numeric variables and arithmetic in later commands', () => {
     const result = interpretLogo(`
-$step = 10
-$turn = 90
-fd $step
-rt $turn
-fd $step
+$A = 10
+$B = $A + 1
+$C = $B * 2
+$D = $C - 2
+
+FD $D / 5
 `);
 
     expect(result.errors).toEqual([]);
-    expect(result.segments).toHaveLength(2);
-    expectPoint(result.turtle.x, 10);
-    expectPoint(result.turtle.y, -10);
-    expectPoint(result.turtle.heading, 90);
+    expect(result.segments).toHaveLength(1);
+    expectPoint(result.segments[0].y2, -4);
+    expectPoint(result.turtle.x, 0);
+    expectPoint(result.turtle.y, -4);
+    expectPoint(result.turtle.heading, 0);
   });
 
   it('reports undefined variables', () => {

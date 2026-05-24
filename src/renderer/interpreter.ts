@@ -52,6 +52,8 @@ const COMMANDS_WITH_ARG = new Set([
 
 const MAX_CALL_DEPTH = 256;
 
+const LINE_BREAK = '\n';
+
 function isVariableToken(token: string | undefined): token is string {
   return Boolean(token && token.startsWith('$'));
 }
@@ -60,46 +62,166 @@ function normalizeVariableName(token: string) {
   return token.slice(1).toLowerCase();
 }
 
+function isExpressionTerminator(token: string | undefined) {
+  return (
+    token === undefined ||
+    token === LINE_BREAK ||
+    token === '[' ||
+    token === ']'
+  );
+}
+
+function isOperatorToken(token: string | undefined) {
+  return token === '+' || token === '-' || token === '*' || token === '/';
+}
+
 function tokenizeLogo(source: string) {
-  return source
+  const tokens: string[] = [];
+
+  source
     .replace(/;.*$/gm, '')
-    .replace(/([[]|\])/g, ' $1 ')
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
+    .split(/\r?\n/)
+    .forEach((line, index, lines) => {
+      const lineTokens = line
+        .replace(/([[]|\])/g, ' $1 ')
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+
+      tokens.push(...lineTokens);
+
+      if (index < lines.length - 1) {
+        tokens.push(LINE_BREAK);
+      }
+    });
+
+  return tokens;
 }
 
 function normalizeCommand(token: string) {
   return token.toUpperCase().replace(/:$/, '');
 }
 
-function parseNumber(token: string | undefined, fallback = 0) {
-  if (!token) return fallback;
-  const value = Number(token);
-  return Number.isFinite(value) ? value : fallback;
-}
-
-function resolveNumericToken(
-  token: string | undefined,
+function parseNumericExpression(
+  tokens: string[],
+  startIndex: number,
   variables: Map<string, number>,
   errors: string[],
-  fallback = 0,
 ) {
-  if (!token) return fallback;
+  let index = startIndex;
 
-  if (isVariableToken(token)) {
-    const variableName = normalizeVariableName(token);
-    const value = variables.get(variableName);
+  const skipLineBreaks = () => {
+    while (tokens[index] === LINE_BREAK) index += 1;
+  };
 
-    if (value === undefined) {
-      errors.push(`Unknown variable: ${token}`);
-      return fallback;
+  const parsePrimary = (): { ok: boolean; value: number } => {
+    skipLineBreaks();
+    const token = tokens[index];
+
+    if (isExpressionTerminator(token)) {
+      return { ok: false, value: 0 };
     }
 
-    return value;
-  }
+    if (token === '+' || token === '-') {
+      index += 1;
+      const primary = parsePrimary();
+      return {
+        ok: primary.ok,
+        value: token === '-' ? -primary.value : primary.value,
+      };
+    }
 
-  return parseNumber(token, fallback);
+    if (isVariableToken(token)) {
+      index += 1;
+      const variableName = normalizeVariableName(token);
+      const value = variables.get(variableName);
+
+      if (value === undefined) {
+        errors.push(`Unknown variable: ${token}`);
+        return { ok: true, value: 0 };
+      }
+
+      return { ok: true, value };
+    }
+
+    const value = Number(token);
+    if (Number.isFinite(value)) {
+      index += 1;
+      return { ok: true, value };
+    }
+
+    return { ok: false, value: 0 };
+  };
+
+  const parseTerm = (): { ok: boolean; value: number } => {
+    let left = parsePrimary();
+    if (!left.ok) return left;
+
+    while (true) {
+      skipLineBreaks();
+      const operator = tokens[index];
+      if (operator !== '*' && operator !== '/') break;
+
+      index += 1;
+      const right = parsePrimary();
+      if (!right.ok) {
+        errors.push(`Expected a number after ${operator}.`);
+        return { ok: false, value: left.value };
+      }
+
+      if (operator === '*') {
+        left = { ok: true, value: left.value * right.value };
+      } else {
+        if (right.value === 0) {
+          errors.push('Division by zero.');
+          left = { ok: false, value: 0 };
+        } else {
+          left = { ok: true, value: left.value / right.value };
+        }
+      }
+    }
+
+    return left;
+  };
+
+  const parseExpression = (): { ok: boolean; value: number } => {
+    let left = parseTerm();
+    if (!left.ok) return left;
+
+    while (true) {
+      skipLineBreaks();
+      const operator = tokens[index];
+      if (!isOperatorToken(operator) || operator === '*' || operator === '/') {
+        break;
+      }
+
+      index += 1;
+      const right = parseTerm();
+      if (!right.ok) {
+        errors.push(`Expected a number after ${operator}.`);
+        return { ok: false, value: left.value };
+      }
+
+      left = {
+        ok: true,
+        value:
+          operator === '+'
+            ? left.value + right.value
+            : left.value - right.value,
+      };
+    }
+
+    return left;
+  };
+
+  const result = parseExpression();
+
+  return {
+    ok: result.ok,
+    value: result.value,
+    nextIndex: index,
+    consumed: index - startIndex,
+  };
 }
 
 function findClosingBracket(tokens: string[], openIndex: number) {
@@ -191,14 +313,31 @@ export function interpretLogo(source: string): LogoResult {
 
     while (index < end && stepCount < MAX_STEPS) {
       const token = stream[index];
+      if (token === LINE_BREAK) {
+        index += 1;
+        continue;
+      }
+
       const command = normalizeCommand(token);
       stepCount += 1;
 
       if (isVariableToken(token) && stream[index + 1] === '=') {
+        const expression = parseNumericExpression(
+          stream,
+          index + 2,
+          variables,
+          errors,
+        );
+
+        if (!expression.ok && expression.consumed === 0) {
+          errors.push(`Expected a numeric expression after ${token} =.`);
+          index += 2;
+          continue;
+        }
+
         const variableName = normalizeVariableName(token);
-        const value = resolveNumericToken(stream[index + 2], variables, errors);
-        variables.set(variableName, value);
-        index += 3;
+        variables.set(variableName, expression.value);
+        index = expression.nextIndex;
         continue;
       }
 
@@ -208,20 +347,22 @@ export function interpretLogo(source: string): LogoResult {
       }
 
       if (command === 'REPEAT') {
+        const repeatExpression = parseNumericExpression(
+          stream,
+          index + 1,
+          variables,
+          errors,
+        );
+
         const repeatCount = Math.max(
           0,
-          Math.min(
-            MAX_REPEAT_COUNT,
-            Math.floor(
-              resolveNumericToken(stream[index + 1], variables, errors),
-            ),
-          ),
+          Math.min(MAX_REPEAT_COUNT, Math.floor(repeatExpression.value)),
         );
-        const openIndex = index + 2;
+        const openIndex = repeatExpression.nextIndex;
 
         if (stream[openIndex] !== '[') {
           errors.push('REPEAT expects a bracketed command block.');
-          index += 2;
+          index = repeatExpression.nextIndex;
           continue;
         }
 
@@ -244,18 +385,27 @@ export function interpretLogo(source: string): LogoResult {
       }
 
       if (COMMANDS_WITH_ARG.has(command)) {
-        const amount = resolveNumericToken(
-          stream[index + 1],
+        const amountExpression = parseNumericExpression(
+          stream,
+          index + 1,
           variables,
           errors,
         );
+
+        if (!amountExpression.ok && amountExpression.consumed === 0) {
+          errors.push(`Expected a numeric expression after ${token}.`);
+          index += 1;
+          continue;
+        }
+
+        const amount = amountExpression.value;
 
         if (command === 'FD' || command === 'FORWARD') move(amount);
         if (command === 'BK' || command === 'BACK') move(-amount);
         if (command === 'RT' || command === 'RIGHT') turtle.heading += amount;
         if (command === 'LT' || command === 'LEFT') turtle.heading -= amount;
 
-        index += 2;
+        index = amountExpression.nextIndex;
         continue;
       }
 
