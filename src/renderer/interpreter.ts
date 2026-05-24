@@ -50,6 +50,8 @@ const COMMANDS_WITH_ARG = new Set([
   'LEFT',
 ]);
 
+const MAX_CALL_DEPTH = 256;
+
 function tokenizeLogo(source: string) {
   return source
     .replace(/;.*$/gm, '')
@@ -60,7 +62,7 @@ function tokenizeLogo(source: string) {
 }
 
 function normalizeCommand(token: string) {
-  return token.toUpperCase();
+  return token.toUpperCase().replace(/:$/, '');
 }
 
 function parseNumber(token: string | undefined, fallback = 0) {
@@ -81,11 +83,52 @@ function findClosingBracket(tokens: string[], openIndex: number) {
   return -1;
 }
 
+function findProcedureEnd(tokens: string[], startIndex: number) {
+  for (let index = startIndex; index < tokens.length; index += 1) {
+    if (normalizeCommand(tokens[index]) === 'END') return index;
+  }
+
+  return -1;
+}
+
+function parseProgram(tokens: string[]) {
+  const procedures = new Map<string, string[]>();
+  const mainTokens: string[] = [];
+  const errors: string[] = [];
+
+  for (let index = 0; index < tokens.length; index += 1) {
+    if (normalizeCommand(tokens[index]) !== 'TO') {
+      mainTokens.push(tokens[index]);
+      continue;
+    }
+
+    const rawName = tokens[index + 1];
+    if (!rawName) {
+      errors.push('TO expects a function name.');
+      break;
+    }
+
+    const name = normalizeCommand(rawName);
+    const endIndex = findProcedureEnd(tokens, index + 2);
+
+    if (endIndex === -1) {
+      errors.push(`TO ${rawName} is missing END.`);
+      break;
+    }
+
+    procedures.set(name, tokens.slice(index + 2, endIndex));
+    index = endIndex;
+  }
+
+  return { mainTokens, procedures, errors };
+}
+
 export function interpretLogo(source: string): LogoResult {
   const tokens = tokenizeLogo(source);
+  const program = parseProgram(tokens);
   const turtle: Turtle = { x: 0, y: 0, heading: 0, penDown: true };
   const segments: Segment[] = [];
-  const errors: string[] = [];
+  const errors: string[] = [...program.errors];
   let stepCount = 0;
 
   const move = (distance: number) => {
@@ -101,11 +144,22 @@ export function interpretLogo(source: string): LogoResult {
     turtle.y = nextY;
   };
 
-  const executeRange = (start: number, end: number) => {
+  const executeRange = (
+    stream: string[],
+    start: number,
+    end: number,
+    callDepth = 0,
+  ) => {
+    if (callDepth > MAX_CALL_DEPTH) {
+      errors.push('Procedure call depth limit reached.');
+      return;
+    }
+
     let index = start;
 
     while (index < end && stepCount < MAX_STEPS) {
-      const command = normalizeCommand(tokens[index]);
+      const token = stream[index];
+      const command = normalizeCommand(token);
       stepCount += 1;
 
       if (command === '[' || command === ']') {
@@ -118,18 +172,18 @@ export function interpretLogo(source: string): LogoResult {
           0,
           Math.min(
             MAX_REPEAT_COUNT,
-            Math.floor(parseNumber(tokens[index + 1])),
+            Math.floor(parseNumber(stream[index + 1])),
           ),
         );
         const openIndex = index + 2;
 
-        if (tokens[openIndex] !== '[') {
+        if (stream[openIndex] !== '[') {
           errors.push('REPEAT expects a bracketed command block.');
           index += 2;
           continue;
         }
 
-        const closeIndex = findClosingBracket(tokens, openIndex);
+        const closeIndex = findClosingBracket(stream, openIndex);
         if (closeIndex === -1) {
           errors.push('REPEAT block is missing a closing bracket.');
           return;
@@ -140,7 +194,7 @@ export function interpretLogo(source: string): LogoResult {
           repeatIndex < repeatCount && stepCount < MAX_STEPS;
           repeatIndex += 1
         ) {
-          executeRange(openIndex + 1, closeIndex);
+          executeRange(stream, openIndex + 1, closeIndex, callDepth + 1);
         }
 
         index = closeIndex + 1;
@@ -148,7 +202,7 @@ export function interpretLogo(source: string): LogoResult {
       }
 
       if (COMMANDS_WITH_ARG.has(command)) {
-        const amount = parseNumber(tokens[index + 1]);
+        const amount = parseNumber(stream[index + 1]);
 
         if (command === 'FD' || command === 'FORWARD') move(amount);
         if (command === 'BK' || command === 'BACK') move(-amount);
@@ -189,12 +243,19 @@ export function interpretLogo(source: string): LogoResult {
         continue;
       }
 
-      errors.push(`Unknown command: ${tokens[index]}`);
+      const procedure = program.procedures.get(command);
+      if (procedure) {
+        executeRange(procedure, 0, procedure.length, callDepth + 1);
+        index += 1;
+        continue;
+      }
+
+      errors.push(`Unknown command: ${token}`);
       index += 1;
     }
   };
 
-  executeRange(0, tokens.length);
+  executeRange(program.mainTokens, 0, program.mainTokens.length);
 
   if (stepCount >= MAX_STEPS) {
     errors.push(`Stopped after ${MAX_STEPS.toLocaleString()} turtle steps.`);

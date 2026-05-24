@@ -79,6 +79,23 @@ describe('interpretLogo', () => {
       'REPEAT expects a bracketed command block.',
     );
   });
+
+  it('supports named procedures with TO and END', () => {
+    const result = interpretLogo(`
+to star:
+  repeat 5 [
+    fd 100
+    rt 144
+  ]
+end
+
+star:
+`);
+
+    expect(result.errors).toEqual([]);
+    expect(result.segments).toHaveLength(5);
+    expectPoint(result.turtle.heading, 720);
+  });
 });
 
 describe('createSvgMarkup', () => {
