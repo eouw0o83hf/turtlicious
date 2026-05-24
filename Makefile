@@ -8,7 +8,13 @@ NODE_MODULES_STAMP := node_modules/.install-stamp
 export NVM_DIR := $(HOME)/.nvm
 # Source nvm and activate the version pinned in .nvmrc before running Node tools.
 define nvm_use
-	[ -s "$(NVM_DIR)/nvm.sh" ] && . "$(NVM_DIR)/nvm.sh" && nvm use --silent
+	if [ -n "$$CI" ]; then \
+		:; \
+	elif [ -s "$(NVM_DIR)/nvm.sh" ]; then \
+		. "$(NVM_DIR)/nvm.sh" && nvm use --silent; \
+	else \
+		:; \
+	fi
 endef
 
 .DEFAULT_GOAL := help
