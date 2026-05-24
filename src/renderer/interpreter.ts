@@ -52,6 +52,14 @@ const COMMANDS_WITH_ARG = new Set([
 
 const MAX_CALL_DEPTH = 256;
 
+function isVariableToken(token: string | undefined): token is string {
+  return Boolean(token && token.startsWith('$'));
+}
+
+function normalizeVariableName(token: string) {
+  return token.slice(1).toLowerCase();
+}
+
 function tokenizeLogo(source: string) {
   return source
     .replace(/;.*$/gm, '')
@@ -69,6 +77,29 @@ function parseNumber(token: string | undefined, fallback = 0) {
   if (!token) return fallback;
   const value = Number(token);
   return Number.isFinite(value) ? value : fallback;
+}
+
+function resolveNumericToken(
+  token: string | undefined,
+  variables: Map<string, number>,
+  errors: string[],
+  fallback = 0,
+) {
+  if (!token) return fallback;
+
+  if (isVariableToken(token)) {
+    const variableName = normalizeVariableName(token);
+    const value = variables.get(variableName);
+
+    if (value === undefined) {
+      errors.push(`Unknown variable: ${token}`);
+      return fallback;
+    }
+
+    return value;
+  }
+
+  return parseNumber(token, fallback);
 }
 
 function findClosingBracket(tokens: string[], openIndex: number) {
@@ -129,6 +160,7 @@ export function interpretLogo(source: string): LogoResult {
   const turtle: Turtle = { x: 0, y: 0, heading: 0, penDown: true };
   const segments: Segment[] = [];
   const errors: string[] = [...program.errors];
+  const variables = new Map<string, number>();
   let stepCount = 0;
 
   const move = (distance: number) => {
@@ -162,6 +194,14 @@ export function interpretLogo(source: string): LogoResult {
       const command = normalizeCommand(token);
       stepCount += 1;
 
+      if (isVariableToken(token) && stream[index + 1] === '=') {
+        const variableName = normalizeVariableName(token);
+        const value = resolveNumericToken(stream[index + 2], variables, errors);
+        variables.set(variableName, value);
+        index += 3;
+        continue;
+      }
+
       if (command === '[' || command === ']') {
         index += 1;
         continue;
@@ -172,7 +212,9 @@ export function interpretLogo(source: string): LogoResult {
           0,
           Math.min(
             MAX_REPEAT_COUNT,
-            Math.floor(parseNumber(stream[index + 1])),
+            Math.floor(
+              resolveNumericToken(stream[index + 1], variables, errors),
+            ),
           ),
         );
         const openIndex = index + 2;
@@ -202,7 +244,11 @@ export function interpretLogo(source: string): LogoResult {
       }
 
       if (COMMANDS_WITH_ARG.has(command)) {
-        const amount = parseNumber(stream[index + 1]);
+        const amount = resolveNumericToken(
+          stream[index + 1],
+          variables,
+          errors,
+        );
 
         if (command === 'FD' || command === 'FORWARD') move(amount);
         if (command === 'BK' || command === 'BACK') move(-amount);

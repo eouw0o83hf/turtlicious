@@ -96,6 +96,29 @@ star:
     expect(result.segments).toHaveLength(5);
     expectPoint(result.turtle.heading, 720);
   });
+
+  it('substitutes numeric variables in later commands', () => {
+    const result = interpretLogo(`
+$step = 10
+$turn = 90
+fd $step
+rt $turn
+fd $step
+`);
+
+    expect(result.errors).toEqual([]);
+    expect(result.segments).toHaveLength(2);
+    expectPoint(result.turtle.x, 10);
+    expectPoint(result.turtle.y, -10);
+    expectPoint(result.turtle.heading, 90);
+  });
+
+  it('reports undefined variables', () => {
+    const result = interpretLogo('FD $missing');
+
+    expect(result.errors).toContain('Unknown variable: $missing');
+    expect(result.segments).toHaveLength(1);
+  });
 });
 
 describe('createSvgMarkup', () => {
