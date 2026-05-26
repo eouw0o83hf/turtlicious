@@ -30,6 +30,7 @@ function App() {
   const [code, setCode] = useState(DEFAULT_CODE);
   const [cursorPos, setCursorPos] = useState({ line: 1, col: 1 });
   const [isFocused, setIsFocused] = useState(false);
+  const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [leftPaneWidth, setLeftPaneWidth] = useState(DEFAULT_LEFT_PANE_WIDTH);
   const [sketchView, setSketchView] = useState({ x: 0, y: 0, scale: 1 });
   const [isPanning, setIsPanning] = useState(false);
@@ -170,9 +171,42 @@ function App() {
       ? `${errors.length} TURTLE ERROR${errors.length === 1 ? '' : 'S'}`
       : 'LIVE OUTPUT OK';
 
+  const handleConfigClose = useCallback(() => {
+    setIsConfigOpen(false);
+  }, []);
+
   return (
     <div className="app-shell">
       <div className="scanlines" />
+
+      {isConfigOpen && (
+        <div
+          className="config-modal-backdrop"
+          onClick={handleConfigClose}
+          role="presentation"
+        >
+          <section
+            className="config-modal"
+            aria-label="Configuration"
+            aria-modal="true"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+          >
+            <div className="config-modal-header">
+              <span className="config-modal-title">CONFIGURATION</span>
+              <button
+                aria-label="Close configuration"
+                className="icon-btn modal-close-btn"
+                onClick={handleConfigClose}
+                type="button"
+              >
+                X
+              </button>
+            </div>
+            <div className="config-modal-body" />
+          </section>
+        </div>
+      )}
 
       <header className="top-bar">
         <div className="brand-mark">
@@ -185,7 +219,19 @@ function App() {
         </div>
 
         <div className="toolbar">
-          <span className="shortcut">LIVE TURTLE RENDER</span>
+          <button
+            aria-label="Open configuration"
+            className="icon-btn gear-btn"
+            onClick={() => setIsConfigOpen(true)}
+            type="button"
+          >
+            <img
+              alt=""
+              aria-hidden="true"
+              className="gear-icon"
+              src="/assets/turtlicious-gear.svg"
+            />
+          </button>
           <select
             className="brush-select"
             value={brushName}

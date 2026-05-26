@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
 import App from './App';
@@ -8,6 +9,9 @@ describe('App', () => {
     render(<App />);
 
     expect(screen.getByAltText(/turtlicious/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /open configuration/i }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /svg/i })).toBeInTheDocument();
     expect(
       screen.getByRole('combobox', { name: /select brush/i }),
@@ -25,5 +29,25 @@ describe('App', () => {
       screen.getByRole('img', { name: /turtle sketch/i }),
     ).toBeInTheDocument();
     expect(screen.getByText(/100% zoom/i)).toBeInTheDocument();
+  });
+
+  it('opens and closes the configuration modal', async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await user.click(
+      screen.getByRole('button', { name: /open configuration/i }),
+    );
+
+    expect(screen.getByRole('dialog', { name: /configuration/i })).toBeVisible();
+
+    await user.click(
+      screen.getByRole('button', { name: /close configuration/i }),
+    );
+
+    expect(
+      screen.queryByRole('dialog', { name: /configuration/i }),
+    ).not.toBeInTheDocument();
   });
 });

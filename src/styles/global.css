@@ -90,16 +90,51 @@ textarea {
   gap: 20px;
 }
 
-.shortcut,
 .status-bar {
   color: #33ff33;
   letter-spacing: 0.1em;
 }
 
-.shortcut,
 .status-bar,
 .run-btn {
   font-size: 18px;
+}
+
+.icon-btn {
+  align-items: center;
+  background: transparent;
+  border: 1px solid #33ff33;
+  box-shadow:
+    0 0 10px rgb(51 255 51 / 25%),
+    inset 0 0 10px rgb(51 255 51 / 5%);
+  color: #33ff33;
+  cursor: pointer;
+  display: inline-flex;
+  justify-content: center;
+  min-height: 2rem;
+  min-width: 2.75rem;
+  padding: 0;
+  text-shadow: 0 0 8px rgb(51 255 51 / 75%);
+  transition: background 0.15s;
+}
+
+.icon-btn:hover {
+  background: rgb(51 255 51 / 15%);
+}
+
+.icon-btn:active {
+  background: rgb(51 255 51 / 30%);
+}
+
+.gear-btn {
+  padding: 0 0.55rem;
+}
+
+.gear-icon {
+  display: block;
+  height: 1.15rem;
+  object-fit: contain;
+  width: 1.15rem;
 }
 
 .run-btn {
@@ -126,6 +161,62 @@ textarea {
 
 .run-btn:active {
   background: rgb(51 255 51 / 30%);
+}
+
+.config-modal-backdrop {
+  align-items: center;
+  background: rgb(0 0 0 / 55%);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 24px;
+  position: fixed;
+  z-index: 90;
+}
+
+.config-modal {
+  background:
+    linear-gradient(180deg, rgb(8 16 8 / 98%), rgb(4 8 4 / 96%)),
+    #060b06;
+  border: 1px solid rgb(51 255 51 / 42%);
+  box-shadow:
+    0 0 32px rgb(0 0 0 / 55%),
+    0 0 28px rgb(51 255 51 / 14%),
+    inset 0 0 28px rgb(51 255 51 / 7%);
+  display: flex;
+  flex-direction: column;
+  min-height: 16rem;
+  overflow: hidden;
+  width: min(34rem, 100%);
+}
+
+.config-modal-header {
+  align-items: center;
+  background:
+    linear-gradient(90deg, rgb(51 255 51 / 18%), rgb(51 255 51 / 6%)),
+    transparent;
+  border-bottom: 1px solid rgb(51 255 51 / 24%);
+  box-shadow: inset 0 -1px 0 rgb(51 255 51 / 12%);
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 12px;
+}
+
+.config-modal-title {
+  font-size: 1.15rem;
+  letter-spacing: 0.18em;
+  text-shadow: 0 0 10px rgb(51 255 51 / 65%);
+}
+
+.modal-close-btn {
+  font-size: 1rem;
+  letter-spacing: 0.12em;
+  min-width: 2.25rem;
+}
+
+.config-modal-body {
+  border-top: 1px solid rgb(51 255 51 / 10%);
+  flex: 1;
 }
 
 .brush-select {
