@@ -203,7 +203,21 @@ function App() {
                 X
               </button>
             </div>
-            <div className="config-modal-body" />
+            <div className="config-modal-body">
+              <label className="config-field" htmlFor="brush-select">
+                <span className="config-field-label">Brush</span>
+                <select
+                  id="brush-select"
+                  className="brush-select"
+                  value={brushName}
+                  onChange={(e) => setBrushName(e.target.value as BrushName)}
+                  aria-label="Select brush"
+                >
+                  <option value="default">⬛ DEFAULT</option>
+                  <option value="rainbow">🌈 RAINBOW</option>
+                </select>
+              </label>
+            </div>
           </section>
         </div>
       )}
@@ -232,15 +246,6 @@ function App() {
               src="/assets/turtlicious-gear.svg"
             />
           </button>
-          <select
-            className="brush-select"
-            value={brushName}
-            onChange={(e) => setBrushName(e.target.value as BrushName)}
-            aria-label="Select brush"
-          >
-            <option value="default">⬛ DEFAULT</option>
-            <option value="rainbow">🌈 RAINBOW</option>
-          </select>
           <button className="run-btn" onClick={handleDownloadSvg} type="button">
             ⇩ SVG
           </button>

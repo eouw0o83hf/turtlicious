@@ -14,8 +14,8 @@ describe('App', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /svg/i })).toBeInTheDocument();
     expect(
-      screen.getByRole('combobox', { name: /select brush/i }),
-    ).toBeInTheDocument();
+      screen.queryByRole('combobox', { name: /select brush/i }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole('separator', { name: /resize panes/i }),
     ).toBeInTheDocument();
@@ -49,5 +49,32 @@ describe('App', () => {
     expect(
       screen.queryByRole('dialog', { name: /configuration/i }),
     ).not.toBeInTheDocument();
+  });
+
+  it('persists brush changes immediately from the configuration modal', async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await user.click(
+      screen.getByRole('button', { name: /open configuration/i }),
+    );
+
+    const brushSelect = screen.getByRole('combobox', { name: /select brush/i });
+    await user.selectOptions(brushSelect, 'rainbow');
+
+    expect(brushSelect).toHaveValue('rainbow');
+
+    await user.click(
+      screen.getByRole('button', { name: /close configuration/i }),
+    );
+
+    await user.click(
+      screen.getByRole('button', { name: /open configuration/i }),
+    );
+
+    expect(
+      screen.getByRole('combobox', { name: /select brush/i }),
+    ).toHaveValue('rainbow');
   });
 });
