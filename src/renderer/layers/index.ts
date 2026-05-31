@@ -3,6 +3,4 @@
 // Import individual layers from here to compose custom stacks.
 // ---------------------------------------------------------------------------
 
-export {
-  brushLayer,
-} from './brush';
+export { brushLayer } from './brush';

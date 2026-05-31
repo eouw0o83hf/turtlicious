@@ -76,8 +76,10 @@ export function brushLayer(
         ? result.brushState.config
         : config;
 
-      if (effectiveName === 'default') return RenderMonad.of(defaultBrush(result));
-      if (effectiveName === 'rainbow') return RenderMonad.of(rainbowBrush(result));
+      if (effectiveName === 'default')
+        return RenderMonad.of(defaultBrush(result));
+      if (effectiveName === 'rainbow')
+        return RenderMonad.of(rainbowBrush(result));
       return RenderMonad.of(squareBrush(result, effectiveConfig.square));
     },
   };
