@@ -52,14 +52,19 @@ function App() {
   const svgMarkup = useMemo(() => createSvgMarkup(result), [result]);
 
   const handleDownloadSvg = useCallback(() => {
-    const blob = new Blob([svgMarkup], { type: 'image/svg+xml' });
+    const exportMarkup = createSvgMarkup(result, {
+      includeTurtle: false,
+      includeBackground: false,
+      strokeColorOverride: '#000000',
+    });
+    const blob = new Blob([exportMarkup], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
     link.download = 'turtlicious-turtle-sketch.svg';
     link.click();
     URL.revokeObjectURL(url);
-  }, [svgMarkup]);
+  }, [result]);
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLTextAreaElement>) => {

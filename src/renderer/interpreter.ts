@@ -5,7 +5,17 @@
 // ---------------------------------------------------------------------------
 
 import { RenderMonad, type RenderingStackMember } from './monad';
-import type { LogoResult, LogoStyle, Segment, Turtle } from './types';
+import {
+  DEFAULT_BRUSH_CONFIG,
+  DEFAULT_BRUSH_STATE,
+  type BrushConfig,
+  type BrushName,
+  type BrushState,
+  type LogoResult,
+  type LogoStyle,
+  type Segment,
+  type Turtle,
+} from './types';
 
 export const DEFAULT_CODE = `; Turtlicious turtle sketch
 ; Commands: FD, BK, RT, LT, PU, PD, HOME, CS, REPEAT
@@ -280,13 +290,67 @@ function parseProgram(tokens: string[]) {
   return { mainTokens, procedures, errors };
 }
 
-export function interpretLogo(source: string): LogoResult {
+function isBrushName(value: string): value is BrushName {
+  return value === 'default' || value === 'rainbow' || value === 'square';
+}
+
+function cloneBrushConfig(config: BrushConfig): BrushConfig {
+  return {
+    square: {
+      width: config.square.width,
+      smooth: config.square.smooth,
+    },
+  };
+}
+
+function createBrushState(initialBrushState?: BrushState): BrushState {
+  const baseState = initialBrushState ?? DEFAULT_BRUSH_STATE;
+  return {
+    name: baseState.name,
+    config: cloneBrushConfig(baseState.config),
+  };
+}
+
+function parseBooleanValueToken(
+  token: string | undefined,
+  variables: Map<string, number>,
+) {
+  if (!token) return { ok: false, value: false };
+
+  if (isVariableToken(token)) {
+    const value = variables.get(normalizeVariableName(token));
+    if (value === undefined) return { ok: false, value: false };
+    return { ok: true, value: value !== 0 };
+  }
+
+  const normalizedToken = `${token}`.toLowerCase();
+  if (['true', 'on', 'yes'].includes(normalizedToken)) {
+    return { ok: true, value: true };
+  }
+  if (['false', 'off', 'no'].includes(normalizedToken)) {
+    return { ok: true, value: false };
+  }
+
+  const numericValue = Number(token);
+  if (Number.isFinite(numericValue)) {
+    return { ok: true, value: numericValue !== 0 };
+  }
+
+  return { ok: false, value: false };
+}
+
+export function interpretLogo(
+  source: string,
+  initialBrushState?: BrushState,
+): LogoResult {
   const tokens = tokenizeLogo(source);
   const program = parseProgram(tokens);
   const turtle: Turtle = { x: 0, y: 0, heading: 0, penDown: true };
   const segments: Segment[] = [];
   const errors: string[] = [...program.errors];
   const variables = new Map<string, number>();
+  const brushState = createBrushState(initialBrushState);
+  let hasBrushCommands = false;
   let stepCount = 0;
 
   const move = (distance: number) => {
@@ -419,6 +483,78 @@ export function interpretLogo(source: string): LogoResult {
         continue;
       }
 
+      if (command === 'SETBRUSH' || command === 'SB') {
+        const nextBrushToken = stream[index + 1];
+        if (!nextBrushToken || isExpressionTerminator(nextBrushToken)) {
+          errors.push('SETBRUSH expects a brush type.');
+          index += 1;
+          continue;
+        }
+
+        const nextBrush = normalizeCommand(nextBrushToken).toLowerCase();
+        if (!isBrushName(nextBrush)) {
+          errors.push(`Unknown brush type: ${nextBrushToken}`);
+          index += 2;
+          continue;
+        }
+
+        brushState.name = nextBrush;
+        hasBrushCommands = true;
+        index += 2;
+        continue;
+      }
+
+      if (command === 'SETBRUSHVALUE' || command === 'SBV') {
+        const keyToken = stream[index + 1];
+        if (!keyToken || isExpressionTerminator(keyToken)) {
+          errors.push('SETBRUSHVALUE expects a key and value.');
+          index += 1;
+          continue;
+        }
+
+        const normalizedKey = normalizeCommand(keyToken).toLowerCase();
+
+        if (normalizedKey === 'width') {
+          const widthExpression = parseNumericExpression(
+            stream,
+            index + 2,
+            variables,
+            errors,
+          );
+
+          if (!widthExpression.ok && widthExpression.consumed === 0) {
+            errors.push('SBV WIDTH expects a numeric value.');
+            index += 2;
+            continue;
+          }
+
+          brushState.config.square.width = widthExpression.value;
+          hasBrushCommands = true;
+          index = widthExpression.nextIndex;
+          continue;
+        }
+
+        if (normalizedKey === 'smooth') {
+          const smoothToken = stream[index + 2];
+          const smoothValue = parseBooleanValueToken(smoothToken, variables);
+
+          if (!smoothValue.ok) {
+            errors.push('SBV SMOOTH expects a boolean value.');
+            index += 2;
+            continue;
+          }
+
+          brushState.config.square.smooth = smoothValue.value;
+          hasBrushCommands = true;
+          index += 3;
+          continue;
+        }
+
+        errors.push(`Unknown brush value key: ${keyToken}`);
+        index += 2;
+        continue;
+      }
+
       if (command === 'PD' || command === 'PENDOWN') {
         turtle.penDown = true;
         index += 1;
@@ -461,7 +597,15 @@ export function interpretLogo(source: string): LogoResult {
     errors.push(`Stopped after ${MAX_STEPS.toLocaleString()} turtle steps.`);
   }
 
-  return { segments, turtle, errors, stepCount, style: DEFAULT_STYLE };
+  return {
+    segments,
+    turtle,
+    errors,
+    stepCount,
+    style: DEFAULT_STYLE,
+    brushState,
+    hasBrushCommands,
+  };
 }
 
 /** Stack layer: interpret Logo source text into a LogoResult. */
@@ -472,3 +616,19 @@ export const logoInterpreterLayer: RenderingStackMember<string, LogoResult> = {
     return new RenderMonad(result, result.errors);
   },
 };
+
+export function logoInterpreterLayerWithBrushState(
+  brushName: BrushName,
+  brushConfig: BrushConfig = DEFAULT_BRUSH_CONFIG,
+): RenderingStackMember<string, LogoResult> {
+  return {
+    name: 'Logo interpreter',
+    run(source) {
+      const result = interpretLogo(source, {
+        name: brushName,
+        config: cloneBrushConfig(brushConfig),
+      });
+      return new RenderMonad(result, result.errors);
+    },
+  };
+}

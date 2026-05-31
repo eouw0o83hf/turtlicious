@@ -3,29 +3,35 @@
 // Consumers import from here; internal modules cross-import as needed.
 // ---------------------------------------------------------------------------
 
-export type { LogoResult, LogoStyle, Segment, Turtle, Point } from './types';
+export type {
+  BrushConfig,
+  BrushName,
+  BrushState,
+  LogoResult,
+  LogoStyle,
+  Point,
+  Segment,
+  Turtle,
+} from './types';
+export { DEFAULT_BRUSH_CONFIG } from './types';
 export { RenderMonad, type RenderingStackMember } from './monad';
 export {
   DEFAULT_CODE,
   interpretLogo,
   logoInterpreterLayer,
+  logoInterpreterLayerWithBrushState,
 } from './interpreter';
 export { createSvgMarkup } from './svg';
-export {
-  DEFAULT_BRUSH_CONFIG,
-  brushLayer,
-  type BrushConfig,
-  type BrushName,
-} from './layers';
+export { brushLayer } from './layers';
 
 import { RenderMonad } from './monad';
-import { logoInterpreterLayer } from './interpreter';
+import { logoInterpreterLayerWithBrushState } from './interpreter';
+import { brushLayer } from './layers';
 import {
   DEFAULT_BRUSH_CONFIG,
-  brushLayer,
   type BrushConfig,
   type BrushName,
-} from './layers';
+} from './types';
 
 export function renderLogoStack(
   source: string,
@@ -33,6 +39,6 @@ export function renderLogoStack(
   brushConfig: BrushConfig = DEFAULT_BRUSH_CONFIG,
 ) {
   return RenderMonad.of(source)
-    .chain(logoInterpreterLayer)
+    .chain(logoInterpreterLayerWithBrushState(brush, brushConfig))
     .chain(brushLayer(brush, brushConfig));
 }

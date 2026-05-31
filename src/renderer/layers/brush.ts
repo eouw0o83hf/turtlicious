@@ -6,25 +6,13 @@
 // ---------------------------------------------------------------------------
 
 import { RenderMonad, type RenderingStackMember } from '../monad';
-import type { LogoResult } from '../types';
-
-export type BrushName = 'default' | 'rainbow' | 'square';
-
-export type SquareBrushOptions = {
-  width: number;
-  smooth: boolean;
-};
-
-export type BrushConfig = {
-  square: SquareBrushOptions;
-};
-
-export const DEFAULT_BRUSH_CONFIG: BrushConfig = {
-  square: {
-    width: 5,
-    smooth: false,
-  },
-};
+import {
+  DEFAULT_BRUSH_CONFIG,
+  type BrushConfig,
+  type BrushName,
+  type LogoResult,
+  type SquareBrushOptions,
+} from '../types';
 
 function normalizeSquareWidth(width: number) {
   if (!Number.isFinite(width)) return DEFAULT_BRUSH_CONFIG.square.width;
@@ -81,9 +69,16 @@ export function brushLayer(
   return {
     name: `Brush: ${name}`,
     run(result) {
-      if (name === 'default') return RenderMonad.of(defaultBrush(result));
-      if (name === 'rainbow') return RenderMonad.of(rainbowBrush(result));
-      return RenderMonad.of(squareBrush(result, config.square));
+      const effectiveName = result.hasBrushCommands
+        ? result.brushState.name
+        : name;
+      const effectiveConfig = result.hasBrushCommands
+        ? result.brushState.config
+        : config;
+
+      if (effectiveName === 'default') return RenderMonad.of(defaultBrush(result));
+      if (effectiveName === 'rainbow') return RenderMonad.of(rainbowBrush(result));
+      return RenderMonad.of(squareBrush(result, effectiveConfig.square));
     },
   };
 }

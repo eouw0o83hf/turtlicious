@@ -6,6 +6,12 @@
 
 import type { LogoResult, Point } from './types';
 
+type SvgRenderOptions = {
+  includeTurtle?: boolean;
+  includeBackground?: boolean;
+  strokeColorOverride?: string;
+};
+
 const SKETCH_WIDTH = 640;
 const SKETCH_HEIGHT = 480;
 const VIEWBOX_PADDING = 24;
@@ -85,7 +91,15 @@ function getSketchBounds(result: LogoResult, turtlePoints: Point[]) {
   };
 }
 
-export function createSvgMarkup(result: LogoResult) {
+export function createSvgMarkup(
+  result: LogoResult,
+  options: SvgRenderOptions = {},
+) {
+  const {
+    includeTurtle = true,
+    includeBackground = true,
+    strokeColorOverride,
+  } = options;
   const turtleRadians = (result.turtle.heading * Math.PI) / 180;
   const turtlePoints: Point[] = [
     [
@@ -113,14 +127,16 @@ export function createSvgMarkup(result: LogoResult) {
           const points = run.points
             .map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`)
             .join(' ');
-          const stroke = run.color ?? result.style.pathColor;
+          const stroke =
+            strokeColorOverride ?? run.color ?? result.style.pathColor;
           const colorAttr = run.color ? ` stroke="${stroke}"` : '';
           return `<polyline points="${points}"${colorAttr} />`;
         })
         .join('\n    ')
     : result.segments
         .map((s) => {
-          const stroke = s.color ?? result.style.pathColor;
+          const stroke =
+            strokeColorOverride ?? s.color ?? result.style.pathColor;
           const colorAttr = s.color ? ` stroke="${stroke}"` : '';
           return `<line x1="${s.x1.toFixed(2)}" y1="${s.y1.toFixed(2)}" x2="${s.x2.toFixed(2)}" y2="${s.y2.toFixed(2)}"${colorAttr} />`;
         })
@@ -130,11 +146,21 @@ export function createSvgMarkup(result: LogoResult) {
     ? ` style="filter: drop-shadow(0 0 4px ${result.style.pathColor}bf)"`
     : '';
 
+  const backgroundMarkup = includeBackground
+    ? `<rect x="${viewBox.minX}" y="${viewBox.minY}" width="${viewBox.width}" height="${viewBox.height}" fill="#000000" />`
+    : '';
+
+  const turtleMarkup = includeTurtle
+    ? `<polygon points="${turtlePointMarkup}" fill="${result.style.turtleColor}" opacity="0.9" />`
+    : '';
+
+  const baseStroke = strokeColorOverride ?? result.style.pathColor;
+
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox.minX} ${viewBox.minY} ${viewBox.width} ${viewBox.height}" role="img" aria-label="Turtle sketch">
-  <rect x="${viewBox.minX}" y="${viewBox.minY}" width="${viewBox.width}" height="${viewBox.height}" fill="#000000" />
-  <g stroke="${result.style.pathColor}" stroke-width="${result.style.strokeWidth.toFixed(2)}" stroke-linecap="${result.style.strokeLinecap}" stroke-linejoin="${result.style.strokeLinejoin}" fill="none"${glowStyle}>
+  ${backgroundMarkup}
+  <g stroke="${baseStroke}" stroke-width="${result.style.strokeWidth.toFixed(2)}" stroke-linecap="${result.style.strokeLinecap}" stroke-linejoin="${result.style.strokeLinejoin}" fill="none"${glowStyle}>
     ${pathMarkup}
   </g>
-  <polygon points="${turtlePointMarkup}" fill="${result.style.turtleColor}" opacity="0.9" />
+  ${turtleMarkup}
 </svg>`;
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  DEFAULT_BRUSH_CONFIG,
   RenderMonad,
   brushLayer,
   createSvgMarkup,
@@ -121,6 +122,15 @@ FD $D / 5
     expect(result.errors).toContain('Unknown variable: $missing');
     expect(result.segments).toHaveLength(1);
   });
+
+  it('supports case-invariant brush style commands and shorthands', () => {
+    const result = interpretLogo('Sb SqUaRe SBV width 50 sBv smooth true');
+
+    expect(result.errors).toEqual([]);
+    expect(result.brushState.name).toBe('square');
+    expect(result.brushState.config.square.width).toBe(50);
+    expect(result.brushState.config.square.smooth).toBe(true);
+  });
 });
 
 describe('createSvgMarkup', () => {
@@ -153,6 +163,18 @@ describe('createSvgMarkup', () => {
       `<rect x="${minX}" y="${minY}" width="${width}" height="${height}" fill="#000000" />`,
     );
   });
+
+  it('supports export options for black lines without turtle', () => {
+    const svg = createSvgMarkup(interpretLogo('FD 10 RT 45 FD 10'), {
+      includeTurtle: false,
+      includeBackground: false,
+      strokeColorOverride: '#000000',
+    });
+
+    expect(svg).toContain('stroke="#000000"');
+    expect(svg).not.toContain('<polygon');
+    expect(svg).not.toContain('<rect ');
+  });
 });
 
 describe('render stack', () => {
@@ -176,6 +198,19 @@ describe('render stack', () => {
 
     expect(svg).toContain('stroke="#33ff33"');
     expect(svg).toContain('fill="#33ff33"');
+  });
+
+  it('applies in-script brush commands over initial brush defaults', () => {
+    const stack = renderLogoStack(
+      'SB square SBV width 50 SBV smooth false RT 90 FD 100 LT 45 FD 100',
+      'default',
+      DEFAULT_BRUSH_CONFIG,
+    );
+    const svg = createSvgMarkup(stack.value);
+
+    expect(svg).toContain('stroke-width="50.00"');
+    expect(svg).toContain('stroke-linejoin="miter"');
+    expect(svg).toContain('stroke-linecap="butt"');
   });
 });
 

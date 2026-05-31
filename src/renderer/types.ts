@@ -13,6 +13,34 @@ export type Turtle = {
 /** Internal 2-D coordinate helper. */
 export type Point = [number, number];
 
+export type BrushName = 'default' | 'rainbow' | 'square';
+
+export type SquareBrushOptions = {
+  width: number;
+  smooth: boolean;
+};
+
+export type BrushConfig = {
+  square: SquareBrushOptions;
+};
+
+export type BrushState = {
+  name: BrushName;
+  config: BrushConfig;
+};
+
+export const DEFAULT_BRUSH_CONFIG: BrushConfig = {
+  square: {
+    width: 5,
+    smooth: false,
+  },
+};
+
+export const DEFAULT_BRUSH_STATE: BrushState = {
+  name: 'default',
+  config: DEFAULT_BRUSH_CONFIG,
+};
+
 /** A single line segment drawn while the pen is down. */
 export type Segment = {
   x1: number;
@@ -43,4 +71,6 @@ export type LogoResult = {
   errors: string[];
   stepCount: number;
   style: LogoStyle;
+  brushState: BrushState;
+  hasBrushCommands: boolean;
 };

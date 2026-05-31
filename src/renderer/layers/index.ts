@@ -4,9 +4,5 @@
 // ---------------------------------------------------------------------------
 
 export {
-  DEFAULT_BRUSH_CONFIG,
   brushLayer,
-  type BrushConfig,
-  type BrushName,
-  type SquareBrushOptions,
 } from './brush';
