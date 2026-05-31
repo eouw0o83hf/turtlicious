@@ -26,6 +26,15 @@ import {
   MAX_CALL_DEPTH,
   LINE_BREAK,
   COMMENT_STRIP_PATTERN,
+  BLOCK_OPEN,
+  BLOCK_CLOSE,
+  ASSIGN_TOKEN,
+  OP_ADD,
+  OP_SUB,
+  OP_MUL,
+  OP_DIV,
+  SBV_KEY_WIDTH,
+  SBV_KEY_SMOOTH,
   isBrushName,
   matchesCommand,
   getMovementCommands,
@@ -34,6 +43,7 @@ import {
   getStyleCommands,
   getControlCommands,
   getProcedureCommands,
+  getBlockTokens,
 } from './language';
 
 // Re-export default program for public API
@@ -51,13 +61,15 @@ function isExpressionTerminator(token: string | undefined) {
   return (
     token === undefined ||
     token === LINE_BREAK ||
-    token === '[' ||
-    token === ']'
+    token === BLOCK_OPEN ||
+    token === BLOCK_CLOSE
   );
 }
 
 function isOperatorToken(token: string | undefined) {
-  return token === '+' || token === '-' || token === '*' || token === '/';
+  return (
+    token === OP_ADD || token === OP_SUB || token === OP_MUL || token === OP_DIV
+  );
 }
 
 function tokenizeLogo(source: string) {
@@ -107,12 +119,12 @@ function parseNumericExpression(
       return { ok: false, value: 0 };
     }
 
-    if (token === '+' || token === '-') {
+    if (token === OP_ADD || token === OP_SUB) {
       index += 1;
       const primary = parsePrimary();
       return {
         ok: primary.ok,
-        value: token === '-' ? -primary.value : primary.value,
+        value: token === OP_SUB ? -primary.value : primary.value,
       };
     }
 
@@ -145,7 +157,7 @@ function parseNumericExpression(
     while (true) {
       skipLineBreaks();
       const operator = tokens[index];
-      if (operator !== '*' && operator !== '/') break;
+      if (operator !== OP_MUL && operator !== OP_DIV) break;
 
       index += 1;
       const right = parsePrimary();
@@ -154,7 +166,7 @@ function parseNumericExpression(
         return { ok: false, value: left.value };
       }
 
-      if (operator === '*') {
+      if (operator === OP_MUL) {
         left = { ok: true, value: left.value * right.value };
       } else {
         if (right.value === 0) {
@@ -176,7 +188,11 @@ function parseNumericExpression(
     while (true) {
       skipLineBreaks();
       const operator = tokens[index];
-      if (!isOperatorToken(operator) || operator === '*' || operator === '/') {
+      if (
+        !isOperatorToken(operator) ||
+        operator === OP_MUL ||
+        operator === OP_DIV
+      ) {
         break;
       }
 
@@ -190,7 +206,7 @@ function parseNumericExpression(
       left = {
         ok: true,
         value:
-          operator === '+'
+          operator === OP_ADD
             ? left.value + right.value
             : left.value - right.value,
       };
@@ -213,8 +229,8 @@ function findClosingBracket(tokens: string[], openIndex: number) {
   let depth = 0;
 
   for (let index = openIndex; index < tokens.length; index += 1) {
-    if (tokens[index] === '[') depth += 1;
-    if (tokens[index] === ']') depth -= 1;
+    if (tokens[index] === BLOCK_OPEN) depth += 1;
+    if (tokens[index] === BLOCK_CLOSE) depth -= 1;
     if (depth === 0) return index;
   }
 
@@ -356,7 +372,7 @@ export function interpretLogo(
       const command = normalizeCommand(token);
       stepCount += 1;
 
-      if (isVariableToken(token) && stream[index + 1] === '=') {
+      if (isVariableToken(token) && stream[index + 1] === ASSIGN_TOKEN) {
         const expression = parseNumericExpression(
           stream,
           index + 2,
@@ -376,8 +392,7 @@ export function interpretLogo(
         continue;
       }
 
-      // Structural tokens — not language commands, handled directly.
-      if (command === '[' || command === ']') {
+      if (matchesCommand(command, ...getBlockTokens())) {
         index += 1;
         continue;
       }
@@ -400,7 +415,7 @@ export function interpretLogo(
         );
         const openIndex = repeatExpression.nextIndex;
 
-        if (stream[openIndex] !== '[') {
+        if (stream[openIndex] !== BLOCK_OPEN) {
           errors.push('REPEAT expects a bracketed command block.');
           index = repeatExpression.nextIndex;
           continue;
@@ -490,7 +505,7 @@ export function interpretLogo(
 
         const normalizedKey = normalizeCommand(keyToken).toLowerCase();
 
-        if (normalizedKey === 'width') {
+        if (normalizedKey === SBV_KEY_WIDTH) {
           const widthExpression = parseNumericExpression(
             stream,
             index + 2,
@@ -510,7 +525,7 @@ export function interpretLogo(
           continue;
         }
 
-        if (normalizedKey === 'smooth') {
+        if (normalizedKey === SBV_KEY_SMOOTH) {
           const smoothToken = stream[index + 2];
           const smoothValue = parseBooleanValueToken(smoothToken, variables);
 

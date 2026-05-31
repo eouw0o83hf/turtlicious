@@ -55,6 +55,9 @@ export const COMMAND_NAMES = [
   'REPEAT',
   'TO',
   'END',
+  // Block delimiters — structural tokens that appear in the command stream
+  '[',
+  ']',
 ] as const;
 
 /** Union type of every valid built-in command name. */
@@ -123,6 +126,48 @@ export const BOOLEAN_FALSE_VALUES = ['false', 'off', 'no'];
  * Internal line break token used during tokenization.
  */
 export const LINE_BREAK = '\n';
+
+// ============================================================================
+// Expression Syntax Tokens
+//
+// All token literals used in expression parsing and variable assignment.
+// Any future syntax additions must be declared here first.
+// ============================================================================
+
+/** Block open delimiter (begins a REPEAT body or other block). */
+export const BLOCK_OPEN: CommandName = '[';
+/** Block close delimiter (ends a block). */
+export const BLOCK_CLOSE: CommandName = ']';
+
+/** Variable / property assignment operator. */
+export const ASSIGN_TOKEN = '=' as const;
+
+/** Arithmetic addition operator. */
+export const OP_ADD = '+' as const;
+/** Arithmetic subtraction / unary negation operator. */
+export const OP_SUB = '-' as const;
+/** Arithmetic multiplication operator. */
+export const OP_MUL = '*' as const;
+/** Arithmetic division operator. */
+export const OP_DIV = '/' as const;
+
+/** All arithmetic operator tokens, in canonical order. */
+export const ARITH_OPERATORS = [OP_ADD, OP_SUB, OP_MUL, OP_DIV] as const;
+export type ArithOperator = (typeof ARITH_OPERATORS)[number];
+
+// ============================================================================
+// SETBRUSHVALUE Parameter Keys
+//
+// The recognized key names for the SBV / SETBRUSHVALUE command.
+// Add new brush parameters here before implementing them.
+// ============================================================================
+
+/** SBV key for the stroke width of the square brush. */
+export const SBV_KEY_WIDTH = 'width' as const;
+/** SBV key for the smooth-corners flag of the square brush. */
+export const SBV_KEY_SMOOTH = 'smooth' as const;
+
+export type SbvKey = typeof SBV_KEY_WIDTH | typeof SBV_KEY_SMOOTH;
 
 // ============================================================================
 // Default Style Configuration
@@ -362,6 +407,13 @@ export function matchesCommand(
   ...names: CommandName[]
 ): boolean {
   return (names as string[]).includes(normalizedCommand);
+}
+
+/**
+ * Block delimiter tokens.
+ */
+export function getBlockTokens(): CommandName[] {
+  return [BLOCK_OPEN, BLOCK_CLOSE];
 }
 
 /**

@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -412,5 +415,36 @@ describe('interpreter implementation constraints', () => {
         `${test.desc} should produce expected segments`,
       ).toHaveLength(test.expectedSegments);
     });
+  });
+
+  it('CONSTRAINT: interpreter.ts contains no direct string/char equality comparisons for command dispatch', () => {
+    // Read the interpreter source at test time so any future edits are
+    // caught immediately on the next test run.
+    const dir = dirname(fileURLToPath(import.meta.url));
+    const source = readFileSync(
+      resolve(dir, 'renderer/interpreter.ts'),
+      'utf-8',
+    );
+
+    // Remove line comments so commented-out examples don't trigger false positives.
+    const stripped = source
+      .split('\n')
+      .map((line) => line.replace(/\/\/.*$/, ''))
+      .join('\n');
+
+    // Every `=== 'anything'` or `=== "anything"` is forbidden.
+    // All token literals must be imported named constants from language.ts;
+    // no raw string literals may appear in equality comparisons.
+    const forbiddenPattern = /===\s*['"][^'"]+['"]/g;
+    const violations = [...stripped.matchAll(forbiddenPattern)].map(
+      (m) => m[0],
+    );
+
+    expect(
+      violations,
+      'interpreter.ts must not use direct string literals in equality comparisons. ' +
+        'All token literals must be named constants imported from language.ts. ' +
+        `Found: ${violations.join(', ')}`,
+    ).toEqual([]);
   });
 });
