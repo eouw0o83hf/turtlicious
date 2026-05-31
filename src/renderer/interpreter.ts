@@ -1,7 +1,8 @@
 // ---------------------------------------------------------------------------
 // Logo / turtle language interpreter.
-// Parses Logo source text and produces a LogoResult carrying the drawn
-// segments, final turtle state, diagnostics, and base style.
+//
+// Implements the Turtlicious Logo language as defined in language.ts.
+// Does not define the language; uses canonical definitions from language.ts.
 // ---------------------------------------------------------------------------
 
 import { RenderMonad, type RenderingStackMember } from './monad';
@@ -16,57 +17,21 @@ import {
   type Segment,
   type Turtle,
 } from './types';
+import {
+  DEFAULT_PROGRAM,
+  DEFAULT_STYLE,
+  COLOR_LOGO_GREEN,
+  MAX_REPEAT_COUNT,
+  MAX_STEPS,
+  MAX_CALL_DEPTH,
+  LINE_BREAK,
+  COMMENT_STRIP_PATTERN,
+  commandsWithNumericArg,
+  isBrushName,
+} from './language';
 
-export const DEFAULT_CODE = `; Turtlicious turtle sketch
-; Commands: FD, BK, RT, LT, PU, PD, HOME, CS, REPEAT
-CS
-REPEAT 36 [
-  REPEAT 4 [
-    FD 90
-    RT 90
-  ]
-  RT 10
-]
-
-PU
-HOME
-RT 90
-FD 140
-LT 90
-PD
-REPEAT 36 [
-  FD 8
-  RT 20
-]`;
-
-const LOGO_GREEN = '#33ff33';
-const MAX_REPEAT_COUNT = 1000;
-const MAX_STEPS = 25_000;
-
-const DEFAULT_STYLE: LogoStyle = {
-  pathColor: LOGO_GREEN,
-  turtleColor: LOGO_GREEN,
-  glow: true,
-  strokeWidth: 2.5,
-  strokeLinecap: 'round',
-  strokeLinejoin: 'round',
-  connectSegments: false,
-};
-
-const COMMANDS_WITH_ARG = new Set([
-  'FD',
-  'FORWARD',
-  'BK',
-  'BACK',
-  'RT',
-  'RIGHT',
-  'LT',
-  'LEFT',
-]);
-
-const MAX_CALL_DEPTH = 256;
-
-const LINE_BREAK = '\n';
+// Re-export default program for public API
+export const DEFAULT_CODE = DEFAULT_PROGRAM;
 
 function isVariableToken(token: string | undefined): token is string {
   return Boolean(token && token.startsWith('$'));
@@ -93,7 +58,7 @@ function tokenizeLogo(source: string) {
   const tokens: string[] = [];
 
   source
-    .replace(/[;#].*$|\/\/.*$/gm, '')
+    .replace(COMMENT_STRIP_PATTERN, '')
     .split(/\r?\n/)
     .forEach((line, index, lines) => {
       const lineTokens = line
@@ -290,10 +255,6 @@ function parseProgram(tokens: string[]) {
   return { mainTokens, procedures, errors };
 }
 
-function isBrushName(value: string): value is BrushName {
-  return value === 'default' || value === 'rainbow' || value === 'square';
-}
-
 function cloneBrushConfig(config: BrushConfig): BrushConfig {
   return {
     square: {
@@ -452,7 +413,7 @@ export function interpretLogo(
         continue;
       }
 
-      if (COMMANDS_WITH_ARG.has(command)) {
+      if (commandsWithNumericArg().has(command)) {
         const amountExpression = parseNumericExpression(
           stream,
           index + 1,

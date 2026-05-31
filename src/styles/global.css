@@ -130,6 +130,14 @@ textarea {
   padding: 0 0.55rem;
 }
 
+.help-btn {
+  padding: 0 0.45rem;
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #33ff33;
+  line-height: 1;
+}
+
 .gear-icon {
   display: block;
   height: 1.15rem;

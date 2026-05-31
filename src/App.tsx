@@ -16,6 +16,8 @@ import {
   type BrushConfig,
   type BrushName,
 } from './renderer';
+import { LanguageReferencePanel } from './LanguageReferencePanel';
+import './styles/language-reference.css';
 
 const GLOW = '0 0 8px rgba(51, 255, 51, 0.75)';
 const DEFAULT_LEFT_PANE_WIDTH = 34;
@@ -33,6 +35,7 @@ function App() {
   const [cursorPos, setCursorPos] = useState({ line: 1, col: 1 });
   const [isFocused, setIsFocused] = useState(false);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
+  const [isReferenceOpen, setIsReferenceOpen] = useState(false);
   const [leftPaneWidth, setLeftPaneWidth] = useState(DEFAULT_LEFT_PANE_WIDTH);
   const [sketchView, setSketchView] = useState({ x: 0, y: 0, scale: 1 });
   const [isPanning, setIsPanning] = useState(false);
@@ -306,6 +309,15 @@ function App() {
               src="/assets/turtlicious-gear.svg"
             />
           </button>
+          <button
+            aria-label="Show language reference"
+            className="icon-btn help-btn"
+            onClick={() => setIsReferenceOpen(true)}
+            type="button"
+            title="Logo language reference"
+          >
+            ?
+          </button>
           <button className="run-btn" onClick={handleDownloadSvg} type="button">
             ⇩ SVG
           </button>
@@ -399,7 +411,7 @@ function App() {
         </section>
       </main>
 
-      <footer className="status-bar">
+      <footer className="status-bar" aria-label="Status bar">
         <span className="status-primary" style={{ textShadow: GLOW }}>
           <span
             className="block-cursor"
@@ -415,6 +427,11 @@ function App() {
         <span>{result.segments.length} TRAILS</span>
         <span>{result.stepCount} STEPS</span>
       </footer>
+
+      <LanguageReferencePanel
+        isOpen={isReferenceOpen}
+        onClose={() => setIsReferenceOpen(false)}
+      />
     </div>
   );
 }
