@@ -9,9 +9,11 @@ import {
 } from 'react';
 
 import {
+  DEFAULT_BRUSH_CONFIG,
   DEFAULT_CODE,
   createSvgMarkup,
   renderLogoStack,
+  type BrushConfig,
   type BrushName,
 } from './renderer';
 
@@ -35,13 +37,15 @@ function App() {
   const [sketchView, setSketchView] = useState({ x: 0, y: 0, scale: 1 });
   const [isPanning, setIsPanning] = useState(false);
   const [brushName, setBrushName] = useState<BrushName>('default');
+  const [brushConfig, setBrushConfig] =
+    useState<BrushConfig>(DEFAULT_BRUSH_CONFIG);
   const workspaceRef = useRef<HTMLElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const lineNumbersRef = useRef<HTMLDivElement>(null);
   const panStartRef = useRef({ pointerX: 0, pointerY: 0, viewX: 0, viewY: 0 });
   const renderState = useMemo(
-    () => renderLogoStack(code, brushName),
-    [code, brushName],
+    () => renderLogoStack(code, brushName, brushConfig),
+    [code, brushName, brushConfig],
   );
   const result = renderState.value;
   const errors = renderState.errors;
@@ -215,8 +219,59 @@ function App() {
                 >
                   <option value="default">⬛ DEFAULT</option>
                   <option value="rainbow">🌈 RAINBOW</option>
+                  <option value="square">◻ SQUARE</option>
                 </select>
               </label>
+
+              {brushName === 'square' && (
+                <>
+                  <label className="config-field" htmlFor="square-width">
+                    <span className="config-field-label">Width</span>
+                    <input
+                      id="square-width"
+                      className="brush-number-input"
+                      type="number"
+                      min="0.25"
+                      max="64"
+                      step="0.25"
+                      value={brushConfig.square.width}
+                      onChange={(event) => {
+                        const next = Number(event.target.value);
+                        setBrushConfig((currentConfig) => ({
+                          ...currentConfig,
+                          square: {
+                            ...currentConfig.square,
+                            width: Number.isFinite(next)
+                              ? next
+                              : DEFAULT_BRUSH_CONFIG.square.width,
+                          },
+                        }));
+                      }}
+                      aria-label="Square brush width"
+                    />
+                  </label>
+
+                  <label className="config-toggle" htmlFor="square-smooth">
+                    <input
+                      id="square-smooth"
+                      type="checkbox"
+                      checked={brushConfig.square.smooth}
+                      onChange={(event) => {
+                        const nextSmooth = event.target.checked;
+                        setBrushConfig((currentConfig) => ({
+                          ...currentConfig,
+                          square: {
+                            ...currentConfig.square,
+                            smooth: nextSmooth,
+                          },
+                        }));
+                      }}
+                      aria-label="Square brush smooth corners"
+                    />
+                    <span>Smooth corners</span>
+                  </label>
+                </>
+              )}
             </div>
           </section>
         </div>

@@ -8,7 +8,28 @@
 import { RenderMonad, type RenderingStackMember } from '../monad';
 import type { LogoResult } from '../types';
 
-export type BrushName = 'default' | 'rainbow';
+export type BrushName = 'default' | 'rainbow' | 'square';
+
+export type SquareBrushOptions = {
+  width: number;
+  smooth: boolean;
+};
+
+export type BrushConfig = {
+  square: SquareBrushOptions;
+};
+
+export const DEFAULT_BRUSH_CONFIG: BrushConfig = {
+  square: {
+    width: 5,
+    smooth: false,
+  },
+};
+
+function normalizeSquareWidth(width: number) {
+  if (!Number.isFinite(width)) return DEFAULT_BRUSH_CONFIG.square.width;
+  return Math.min(64, Math.max(0.25, width));
+}
 
 // ---------------------------------------------------------------------------
 // Default brush — the canonical green CRT glow.
@@ -35,18 +56,34 @@ function rainbowBrush(result: LogoResult): LogoResult {
   };
 }
 
-const BRUSHES: Record<BrushName, (result: LogoResult) => LogoResult> = {
-  default: defaultBrush,
-  rainbow: rainbowBrush,
-};
+function squareBrush(
+  result: LogoResult,
+  options: SquareBrushOptions,
+): LogoResult {
+  const strokeWidth = normalizeSquareWidth(options.width);
+
+  return {
+    ...result,
+    style: {
+      ...result.style,
+      strokeWidth,
+      strokeLinecap: options.smooth ? 'round' : 'butt',
+      strokeLinejoin: options.smooth ? 'round' : 'miter',
+      connectSegments: true,
+    },
+  };
+}
 
 export function brushLayer(
   name: BrushName,
+  config: BrushConfig = DEFAULT_BRUSH_CONFIG,
 ): RenderingStackMember<LogoResult, LogoResult> {
   return {
     name: `Brush: ${name}`,
     run(result) {
-      return RenderMonad.of(BRUSHES[name](result));
+      if (name === 'default') return RenderMonad.of(defaultBrush(result));
+      if (name === 'rainbow') return RenderMonad.of(rainbowBrush(result));
+      return RenderMonad.of(squareBrush(result, config.square));
     },
   };
 }

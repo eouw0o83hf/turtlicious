@@ -3,4 +3,10 @@
 // Import individual layers from here to compose custom stacks.
 // ---------------------------------------------------------------------------
 
-export { brushLayer, type BrushName } from './brush';
+export {
+  DEFAULT_BRUSH_CONFIG,
+  brushLayer,
+  type BrushConfig,
+  type BrushName,
+  type SquareBrushOptions,
+} from './brush';

@@ -11,14 +11,28 @@ export {
   logoInterpreterLayer,
 } from './interpreter';
 export { createSvgMarkup } from './svg';
-export { brushLayer, type BrushName } from './layers';
+export {
+  DEFAULT_BRUSH_CONFIG,
+  brushLayer,
+  type BrushConfig,
+  type BrushName,
+} from './layers';
 
 import { RenderMonad } from './monad';
 import { logoInterpreterLayer } from './interpreter';
-import { brushLayer, type BrushName } from './layers';
+import {
+  DEFAULT_BRUSH_CONFIG,
+  brushLayer,
+  type BrushConfig,
+  type BrushName,
+} from './layers';
 
-export function renderLogoStack(source: string, brush: BrushName = 'default') {
+export function renderLogoStack(
+  source: string,
+  brush: BrushName = 'default',
+  brushConfig: BrushConfig = DEFAULT_BRUSH_CONFIG,
+) {
   return RenderMonad.of(source)
     .chain(logoInterpreterLayer)
-    .chain(brushLayer(brush));
+    .chain(brushLayer(brush, brushConfig));
 }

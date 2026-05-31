@@ -29,6 +29,11 @@ export type LogoStyle = {
   turtleColor: string;
   /** Whether to apply a drop-shadow glow to the path group. */
   glow: boolean;
+  strokeWidth: number;
+  strokeLinecap: 'round' | 'square' | 'butt';
+  strokeLinejoin: 'round' | 'miter' | 'bevel';
+  /** Whether adjacent colinear/turning segments should be rendered as connected runs. */
+  connectSegments: boolean;
 };
 
 /** The value carried through the rendering stack. */

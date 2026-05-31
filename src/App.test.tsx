@@ -40,7 +40,9 @@ describe('App', () => {
       screen.getByRole('button', { name: /open configuration/i }),
     );
 
-    expect(screen.getByRole('dialog', { name: /configuration/i })).toBeVisible();
+    expect(
+      screen.getByRole('dialog', { name: /configuration/i }),
+    ).toBeVisible();
 
     await user.click(
       screen.getByRole('button', { name: /close configuration/i }),
@@ -73,8 +75,43 @@ describe('App', () => {
       screen.getByRole('button', { name: /open configuration/i }),
     );
 
+    expect(screen.getByRole('combobox', { name: /select brush/i })).toHaveValue(
+      'rainbow',
+    );
+  });
+
+  it('shows and persists square brush controls in configuration', async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await user.click(
+      screen.getByRole('button', { name: /open configuration/i }),
+    );
+
+    const brushSelect = screen.getByRole('combobox', { name: /select brush/i });
+    await user.selectOptions(brushSelect, 'square');
+
+    expect(screen.getByLabelText(/square brush width/i)).toHaveValue(5);
     expect(
-      screen.getByRole('combobox', { name: /select brush/i }),
-    ).toHaveValue('rainbow');
+      screen.getByLabelText(/square brush smooth corners/i),
+    ).not.toBeChecked();
+
+    await user.clear(screen.getByLabelText(/square brush width/i));
+    await user.type(screen.getByLabelText(/square brush width/i), '7.5');
+    await user.click(screen.getByLabelText(/square brush smooth corners/i));
+
+    await user.click(
+      screen.getByRole('button', { name: /close configuration/i }),
+    );
+    await user.click(
+      screen.getByRole('button', { name: /open configuration/i }),
+    );
+
+    expect(screen.getByRole('combobox', { name: /select brush/i })).toHaveValue(
+      'square',
+    );
+    expect(screen.getByLabelText(/square brush width/i)).toHaveValue(7.5);
+    expect(screen.getByLabelText(/square brush smooth corners/i)).toBeChecked();
   });
 });

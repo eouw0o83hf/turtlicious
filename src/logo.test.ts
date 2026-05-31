@@ -209,4 +209,29 @@ describe('brush layer', () => {
     expect(svg).toContain('stroke="hsl(');
     expect(svg).not.toContain('drop-shadow');
   });
+
+  it('square brush renders configurable width and angular corners', () => {
+    const stack = renderLogoStack('RT 90 FD 100 LT 45 FD 100', 'square', {
+      square: { width: 50, smooth: false },
+    });
+    const svg = createSvgMarkup(stack.value);
+
+    expect(svg).toContain('stroke-width="50.00"');
+    expect(svg).toContain('stroke-linejoin="miter"');
+    expect(svg).toContain('stroke-linecap="butt"');
+    expect(svg).toMatch(
+      /<polyline points="0\.00,0\.00 100\.00,-?0\.00 170\.71,-70\.71"/,
+    );
+  });
+
+  it('square brush renders smooth curved corners when enabled', () => {
+    const stack = renderLogoStack('RT 90 FD 100 LT 45 FD 100', 'square', {
+      square: { width: 50, smooth: true },
+    });
+    const svg = createSvgMarkup(stack.value);
+
+    expect(svg).toContain('stroke-width="50.00"');
+    expect(svg).toContain('stroke-linejoin="round"');
+    expect(svg).toContain('stroke-linecap="round"');
+  });
 });

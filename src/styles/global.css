@@ -260,6 +260,35 @@ textarea {
   color: #33ff33;
 }
 
+.brush-number-input {
+  background: transparent;
+  border: 1px solid #33ff33;
+  box-shadow:
+    0 0 10px rgb(51 255 51 / 25%),
+    inset 0 0 10px rgb(51 255 51 / 5%);
+  color: #33ff33;
+  letter-spacing: 0.08em;
+  padding: 2px 10px 4px;
+  text-shadow: 0 0 8px rgb(51 255 51 / 75%);
+}
+
+.brush-number-input:focus-visible {
+  outline: 1px solid rgb(51 255 51 / 48%);
+  outline-offset: 1px;
+}
+
+.config-toggle {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  gap: 8px;
+  letter-spacing: 0.1em;
+}
+
+.config-toggle input {
+  accent-color: #33ff33;
+}
+
 .workspace {
   display: flex;
   flex: 1;

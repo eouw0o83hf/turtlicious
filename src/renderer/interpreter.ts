@@ -5,7 +5,7 @@
 // ---------------------------------------------------------------------------
 
 import { RenderMonad, type RenderingStackMember } from './monad';
-import type { LogoResult, Segment, Turtle } from './types';
+import type { LogoResult, LogoStyle, Segment, Turtle } from './types';
 
 export const DEFAULT_CODE = `; Turtlicious turtle sketch
 ; Commands: FD, BK, RT, LT, PU, PD, HOME, CS, REPEAT
@@ -33,10 +33,14 @@ const LOGO_GREEN = '#33ff33';
 const MAX_REPEAT_COUNT = 1000;
 const MAX_STEPS = 25_000;
 
-const DEFAULT_STYLE = {
+const DEFAULT_STYLE: LogoStyle = {
   pathColor: LOGO_GREEN,
   turtleColor: LOGO_GREEN,
   glow: true,
+  strokeWidth: 2.5,
+  strokeLinecap: 'round',
+  strokeLinejoin: 'round',
+  connectSegments: false,
 };
 
 const COMMANDS_WITH_ARG = new Set([
