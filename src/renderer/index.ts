@@ -25,6 +25,7 @@ export { createSvgMarkup } from './svg';
 export { brushLayer } from './layers';
 export {
   COMMANDS,
+  COMMAND_NAMES,
   BRUSH_NAMES,
   COLOR_LOGO_GREEN,
   COMMENT_MARKERS,
@@ -40,7 +41,14 @@ export {
   getCommandSpec,
   getAllCommandNames,
   isBrushName,
-  commandsWithNumericArg,
+  matchesCommand,
+  getMovementCommands,
+  getPenCommands,
+  getTurtleCommands,
+  getStyleCommands,
+  getControlCommands,
+  getProcedureCommands,
+  type CommandName,
   type CommandCategory,
   type CommandParameter,
   type CommandSpec,

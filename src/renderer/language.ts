@@ -19,6 +19,47 @@ export type CommandCategory =
   | 'control'
   | 'procedure';
 
+// ============================================================================
+// Command Name Registry (single source of truth for all command names)
+//
+// To add a command to the language:
+//   1. Add its name (and any aliases) here.
+//   2. TypeScript will require the COMMANDS spec array to use it as-is.
+//   3. The interpreter can then reference it via matchesCommand().
+// ============================================================================
+
+/**
+ * Exhaustive tuple of every built-in command name and alias.
+ * This is the single source of truth; all other usages are derived from it.
+ */
+export const COMMAND_NAMES = [
+  'FORWARD',
+  'FD',
+  'BACK',
+  'BK',
+  'RIGHT',
+  'RT',
+  'LEFT',
+  'LT',
+  'PENUP',
+  'PU',
+  'PENDOWN',
+  'PD',
+  'HOME',
+  'CLEARSCREEN',
+  'CS',
+  'SETBRUSH',
+  'SB',
+  'SETBRUSHVALUE',
+  'SBV',
+  'REPEAT',
+  'TO',
+  'END',
+] as const;
+
+/** Union type of every valid built-in command name. */
+export type CommandName = (typeof COMMAND_NAMES)[number];
+
 /**
  * Parameter definition for a command.
  */
@@ -30,16 +71,18 @@ export interface CommandParameter {
 
 /**
  * Complete command specification.
+ * Both `name` and `aliases` are constrained to registered CommandName values,
+ * so the COMMANDS array cannot reference names absent from COMMAND_NAMES.
  */
 export interface CommandSpec {
-  /** Primary command name (uppercase). */
-  name: string;
+  /** Primary command name — must be a registered CommandName. */
+  name: CommandName;
   /** Short description of what the command does. */
   description: string;
   /** Command category for documentation. */
   category: CommandCategory;
-  /** Alternative names/aliases (uppercase). */
-  aliases: string[];
+  /** Aliases — each must also be a registered CommandName. */
+  aliases: CommandName[];
   /** Required parameters, in order. */
   parameters: CommandParameter[];
   /** Example usage. */
@@ -276,32 +319,91 @@ export const COMMANDS: CommandSpec[] = [
 ];
 
 /**
- * Quick lookup for commands that require numeric arguments.
- */
-export function commandsWithNumericArg(): Set<string> {
-  return new Set(['FD', 'FORWARD', 'BK', 'BACK', 'RT', 'RIGHT', 'LT', 'LEFT']);
-}
-
-/**
  * Get command specification by name (case-insensitive).
  */
 export function getCommandSpec(commandName: string): CommandSpec | undefined {
   const upper = commandName.toUpperCase();
   return COMMANDS.find(
-    (cmd) => cmd.name === upper || cmd.aliases.includes(upper),
+    (cmd) => cmd.name === upper || cmd.aliases.includes(upper as CommandName),
   );
 }
 
 /**
  * Get all command names (primary + aliases) for validation.
  */
-export function getAllCommandNames(): string[] {
-  const names: string[] = [];
+export function getAllCommandNames(): CommandName[] {
+  const names: CommandName[] = [];
   COMMANDS.forEach((cmd) => {
     names.push(cmd.name);
     names.push(...cmd.aliases);
   });
   return names;
+}
+
+// ============================================================================
+// Command Matching (Interpreter Use Only)
+// ============================================================================
+
+/**
+ * Check if a normalized command token matches any of the supplied
+ * canonical CommandName values.
+ *
+ * The `normalizedCommand` argument is a runtime string (user input).
+ * Every entry in `names` MUST be a registered CommandName — TypeScript
+ * will reject any string literal that is absent from COMMAND_NAMES,
+ * preventing undeclared commands from being referenced here.
+ *
+ * This is the ONLY way the interpreter should perform command comparisons.
+ * @example
+ *   if (matchesCommand(command, 'FD', 'FORWARD')) { move(amount); }
+ */
+export function matchesCommand(
+  normalizedCommand: string,
+  ...names: CommandName[]
+): boolean {
+  return (names as string[]).includes(normalizedCommand);
+}
+
+/**
+ * Movement commands (require a numeric argument).
+ */
+export function getMovementCommands(): CommandName[] {
+  return ['FD', 'FORWARD', 'BK', 'BACK', 'RT', 'RIGHT', 'LT', 'LEFT'];
+}
+
+/**
+ * Pen state commands.
+ */
+export function getPenCommands(): CommandName[] {
+  return ['PU', 'PENUP', 'PD', 'PENDOWN'];
+}
+
+/**
+ * Turtle state commands (non-movement).
+ */
+export function getTurtleCommands(): CommandName[] {
+  return ['HOME', 'CS', 'CLEARSCREEN'];
+}
+
+/**
+ * Visual style / brush commands.
+ */
+export function getStyleCommands(): CommandName[] {
+  return ['SETBRUSH', 'SB', 'SETBRUSHVALUE', 'SBV'];
+}
+
+/**
+ * Control-flow commands.
+ */
+export function getControlCommands(): CommandName[] {
+  return ['REPEAT'];
+}
+
+/**
+ * Procedure-definition commands.
+ */
+export function getProcedureCommands(): CommandName[] {
+  return ['TO', 'END'];
 }
 
 // ============================================================================

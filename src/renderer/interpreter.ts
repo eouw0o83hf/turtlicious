@@ -26,8 +26,14 @@ import {
   MAX_CALL_DEPTH,
   LINE_BREAK,
   COMMENT_STRIP_PATTERN,
-  commandsWithNumericArg,
   isBrushName,
+  matchesCommand,
+  getMovementCommands,
+  getPenCommands,
+  getTurtleCommands,
+  getStyleCommands,
+  getControlCommands,
+  getProcedureCommands,
 } from './language';
 
 // Re-export default program for public API
@@ -217,7 +223,7 @@ function findClosingBracket(tokens: string[], openIndex: number) {
 
 function findProcedureEnd(tokens: string[], startIndex: number) {
   for (let index = startIndex; index < tokens.length; index += 1) {
-    if (normalizeCommand(tokens[index]) === 'END') return index;
+    if (matchesCommand(normalizeCommand(tokens[index]), 'END')) return index;
   }
 
   return -1;
@@ -229,7 +235,7 @@ function parseProgram(tokens: string[]) {
   const errors: string[] = [];
 
   for (let index = 0; index < tokens.length; index += 1) {
-    if (normalizeCommand(tokens[index]) !== 'TO') {
+    if (!matchesCommand(normalizeCommand(tokens[index]), 'TO')) {
       mainTokens.push(tokens[index]);
       continue;
     }
@@ -370,12 +376,17 @@ export function interpretLogo(
         continue;
       }
 
+      // Structural tokens — not language commands, handled directly.
       if (command === '[' || command === ']') {
         index += 1;
         continue;
       }
 
-      if (command === 'REPEAT') {
+      if (matchesCommand(command, ...getControlCommands())) {
+        if (!matchesCommand(command, 'REPEAT')) {
+          index += 1;
+          continue;
+        }
         const repeatExpression = parseNumericExpression(
           stream,
           index + 1,
@@ -413,7 +424,7 @@ export function interpretLogo(
         continue;
       }
 
-      if (commandsWithNumericArg().has(command)) {
+      if (matchesCommand(command, ...getMovementCommands())) {
         const amountExpression = parseNumericExpression(
           stream,
           index + 1,
@@ -429,22 +440,26 @@ export function interpretLogo(
 
         const amount = amountExpression.value;
 
-        if (command === 'FD' || command === 'FORWARD') move(amount);
-        if (command === 'BK' || command === 'BACK') move(-amount);
-        if (command === 'RT' || command === 'RIGHT') turtle.heading += amount;
-        if (command === 'LT' || command === 'LEFT') turtle.heading -= amount;
+        if (matchesCommand(command, 'FD', 'FORWARD')) move(amount);
+        if (matchesCommand(command, 'BK', 'BACK')) move(-amount);
+        if (matchesCommand(command, 'RT', 'RIGHT')) turtle.heading += amount;
+        if (matchesCommand(command, 'LT', 'LEFT')) turtle.heading -= amount;
 
         index = amountExpression.nextIndex;
         continue;
       }
 
-      if (command === 'PU' || command === 'PENUP') {
-        turtle.penDown = false;
+      if (matchesCommand(command, ...getPenCommands())) {
+        if (matchesCommand(command, 'PU', 'PENUP')) {
+          turtle.penDown = false;
+        } else if (matchesCommand(command, 'PD', 'PENDOWN')) {
+          turtle.penDown = true;
+        }
         index += 1;
         continue;
       }
 
-      if (command === 'SETBRUSH' || command === 'SB') {
+      if (matchesCommand(command, 'SETBRUSH', 'SB')) {
         const nextBrushToken = stream[index + 1];
         if (!nextBrushToken || isExpressionTerminator(nextBrushToken)) {
           errors.push('SETBRUSH expects a brush type.');
@@ -465,7 +480,7 @@ export function interpretLogo(
         continue;
       }
 
-      if (command === 'SETBRUSHVALUE' || command === 'SBV') {
+      if (matchesCommand(command, 'SETBRUSHVALUE', 'SBV')) {
         const keyToken = stream[index + 1];
         if (!keyToken || isExpressionTerminator(keyToken)) {
           errors.push('SETBRUSHVALUE expects a key and value.');
@@ -516,13 +531,7 @@ export function interpretLogo(
         continue;
       }
 
-      if (command === 'PD' || command === 'PENDOWN') {
-        turtle.penDown = true;
-        index += 1;
-        continue;
-      }
-
-      if (command === 'HOME') {
+      if (matchesCommand(command, 'HOME')) {
         turtle.x = 0;
         turtle.y = 0;
         turtle.heading = 0;
@@ -530,7 +539,7 @@ export function interpretLogo(
         continue;
       }
 
-      if (command === 'CS' || command === 'CLEARSCREEN') {
+      if (matchesCommand(command, 'CS', 'CLEARSCREEN')) {
         segments.length = 0;
         turtle.x = 0;
         turtle.y = 0;

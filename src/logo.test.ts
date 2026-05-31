@@ -8,6 +8,14 @@ import {
   interpretLogo,
   logoInterpreterLayer,
   renderLogoStack,
+  matchesCommand,
+  getMovementCommands,
+  getPenCommands,
+  getTurtleCommands,
+  getStyleCommands,
+  getControlCommands,
+  COMMAND_NAMES,
+  type CommandName,
 } from './renderer';
 
 function expectPoint(actual: number, expected: number) {
@@ -294,5 +302,115 @@ describe('brush layer', () => {
     expect(svg).toContain('stroke-width="50.00"');
     expect(svg).toContain('stroke-linejoin="round"');
     expect(svg).toContain('stroke-linecap="round"');
+  });
+});
+
+// ============================================================================
+// Constraint Tests - Enforce Language Definition Usage
+// ============================================================================
+
+describe('interpreter implementation constraints', () => {
+  it('CONSTRAINT: matchesCommand() function validates all command groups', () => {
+    // This test ensures that the matchesCommand function works correctly
+    // and that all command group functions are properly defined
+
+    // Test movement commands
+    const movementCmds = getMovementCommands();
+    expect(movementCmds).toContain('FD');
+    expect(movementCmds).toContain('FORWARD');
+    expect(movementCmds).toContain('BK');
+    expect(movementCmds).toContain('BACK');
+    expect(movementCmds).toContain('RT');
+    expect(movementCmds).toContain('RIGHT');
+    expect(movementCmds).toContain('LT');
+    expect(movementCmds).toContain('LEFT');
+
+    // Test pen commands
+    const penCmds = getPenCommands();
+    expect(penCmds).toContain('PU');
+    expect(penCmds).toContain('PENUP');
+    expect(penCmds).toContain('PD');
+    expect(penCmds).toContain('PENDOWN');
+
+    // Test turtle commands
+    const turtleCmds = getTurtleCommands();
+    expect(turtleCmds).toContain('HOME');
+    expect(turtleCmds).toContain('CS');
+    expect(turtleCmds).toContain('CLEARSCREEN');
+
+    // Test style commands
+    const styleCmds = getStyleCommands();
+    expect(styleCmds).toContain('SETBRUSH');
+    expect(styleCmds).toContain('SB');
+    expect(styleCmds).toContain('SETBRUSHVALUE');
+    expect(styleCmds).toContain('SBV');
+
+    // Test control commands
+    const controlCmds = getControlCommands();
+    expect(controlCmds).toContain('REPEAT');
+  });
+
+  it('CONSTRAINT: CommandName type covers all command group members', () => {
+    // Verify that every value returned by the group helpers is also in
+    // the canonical COMMAND_NAMES tuple.  If a group function referenced
+    // a string that was not in COMMAND_NAMES, TypeScript would already
+    // reject it at compile time (CommandName[]), but this runtime check
+    // provides a second safety net and documents the expectation.
+    const allGroupMembers: string[] = [
+      ...getMovementCommands(),
+      ...getPenCommands(),
+      ...getTurtleCommands(),
+      ...getStyleCommands(),
+      ...getControlCommands(),
+    ];
+
+    const nameSet = new Set<string>(COMMAND_NAMES);
+    allGroupMembers.forEach((name) => {
+      expect(nameSet.has(name)).toBe(true);
+    });
+  });
+
+  it('CONSTRAINT: matchesCommand() correctly identifies command matches', () => {
+    // Verify matchesCommand works for all command types
+    expect(matchesCommand('FD', 'FD')).toBe(true);
+    expect(matchesCommand('FORWARD', 'FORWARD')).toBe(true);
+    expect(matchesCommand('BK', 'BK')).toBe(true);
+    expect(matchesCommand('HOME', 'HOME')).toBe(true);
+    expect(matchesCommand('PU', 'PU')).toBe(true);
+    expect(matchesCommand('CS', 'CS')).toBe(true);
+    expect(matchesCommand('SB', 'SB')).toBe(true);
+
+    // Verify non-matches
+    expect(matchesCommand('FD', 'BK')).toBe(false);
+    expect(matchesCommand('HOME', 'CS')).toBe(false);
+    expect(matchesCommand('PU', 'PD')).toBe(false);
+  });
+
+  it('CONSTRAINT: All built-in commands are executable', () => {
+    // Test that all major command groups actually work in the interpreter
+    const commandTests = [
+      { code: 'FD 10', expectedSegments: 1, desc: 'FORWARD command' },
+      { code: 'BK 5', expectedSegments: 1, desc: 'BACK command' },
+      { code: 'PU FD 10 PD FD 10', expectedSegments: 1, desc: 'PEN commands' },
+      { code: 'HOME', expectedSegments: 0, desc: 'HOME command' },
+      { code: 'CS FD 10', expectedSegments: 1, desc: 'CLEARSCREEN command' },
+      {
+        code: 'SB RAINBOW FD 10',
+        expectedSegments: 1,
+        desc: 'SETBRUSH command',
+      },
+      { code: 'REPEAT 2 [FD 10]', expectedSegments: 2, desc: 'REPEAT command' },
+    ];
+
+    commandTests.forEach((test) => {
+      const result = interpretLogo(test.code);
+      expect(result.errors, `${test.desc} should not produce errors`).toEqual(
+        [],
+      );
+      expect(
+        result.segments,
+        `${test.desc} should produce expected segments`,
+      ).toHaveLength(test.expectedSegments);
+    });
   });
 });
