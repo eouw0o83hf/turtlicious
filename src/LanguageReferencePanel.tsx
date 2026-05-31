@@ -5,11 +5,7 @@
 // Automatically generated from canonical language definitions in language.ts.
 // ---------------------------------------------------------------------------
 
-import {
-  COMMANDS,
-  type CommandCategory,
-  type CommandSpec,
-} from './renderer';
+import { COMMANDS, type CommandCategory, type CommandSpec } from './renderer';
 
 const CATEGORY_DESCRIPTIONS: Record<CommandCategory, string> = {
   movement: 'Movement - Control turtle position',
