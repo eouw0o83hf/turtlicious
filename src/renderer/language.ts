@@ -202,7 +202,7 @@ export const BRUSH_NAMES = ['default', 'rainbow', 'square'] as const;
 export function isBrushName(
   value: string,
 ): value is 'default' | 'rainbow' | 'square' {
-  return BRUSH_NAMES.includes(value as any);
+  return BRUSH_NAMES.includes(value as (typeof BRUSH_NAMES)[number]);
 }
 
 // ============================================================================

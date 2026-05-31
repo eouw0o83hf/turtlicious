@@ -18,7 +18,6 @@ import {
   getStyleCommands,
   getControlCommands,
   COMMAND_NAMES,
-  type CommandName,
 } from './renderer';
 
 function expectPoint(actual: number, expected: number) {

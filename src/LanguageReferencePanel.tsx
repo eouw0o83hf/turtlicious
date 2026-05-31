@@ -7,7 +7,6 @@
 
 import {
   COMMANDS,
-  getCommandSpec,
   type CommandCategory,
   type CommandSpec,
 } from './renderer';

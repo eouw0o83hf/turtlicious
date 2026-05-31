@@ -13,14 +13,12 @@ import {
   type BrushName,
   type BrushState,
   type LogoResult,
-  type LogoStyle,
   type Segment,
   type Turtle,
 } from './types';
 import {
   DEFAULT_PROGRAM,
   DEFAULT_STYLE,
-  COLOR_LOGO_GREEN,
   MAX_REPEAT_COUNT,
   MAX_STEPS,
   MAX_CALL_DEPTH,
@@ -39,10 +37,7 @@ import {
   matchesCommand,
   getMovementCommands,
   getPenCommands,
-  getTurtleCommands,
-  getStyleCommands,
   getControlCommands,
-  getProcedureCommands,
   getBlockTokens,
 } from './language';
 
