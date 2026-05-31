@@ -93,7 +93,7 @@ function tokenizeLogo(source: string) {
   const tokens: string[] = [];
 
   source
-    .replace(/;.*$/gm, '')
+    .replace(/[;#].*$|\/\/.*$/gm, '')
     .split(/\r?\n/)
     .forEach((line, index, lines) => {
       const lineTokens = line

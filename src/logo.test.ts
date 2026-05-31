@@ -131,6 +131,32 @@ FD $D / 5
     expect(result.brushState.config.square.width).toBe(50);
     expect(result.brushState.config.square.smooth).toBe(true);
   });
+
+  it('supports semicolon, hash, and double-slash comments', () => {
+    const resultSemicolon = interpretLogo('FD 10 ; this is a comment');
+    const resultHash = interpretLogo('FD 10 # this is a comment');
+    const resultDoubleSlash = interpretLogo('FD 10 // this is a comment');
+
+    expect(resultSemicolon.errors).toEqual([]);
+    expect(resultSemicolon.segments).toHaveLength(1);
+    expect(resultHash.errors).toEqual([]);
+    expect(resultHash.segments).toHaveLength(1);
+    expect(resultDoubleSlash.errors).toEqual([]);
+    expect(resultDoubleSlash.segments).toHaveLength(1);
+  });
+
+  it('ignores everything after comment marker on a line', () => {
+    const result = interpretLogo(`
+      FD 10 // RT 90 FD 5 would be parsed here
+      RT 90
+      FD 5 # but this comment prevents FD 5 RT 90 FD 10
+    `);
+
+    expect(result.errors).toEqual([]);
+    expect(result.segments).toHaveLength(2);
+    expectPoint(result.segments[0].y2, -10);
+    expectPoint(result.segments[1].x2, 5);
+  });
 });
 
 describe('createSvgMarkup', () => {
