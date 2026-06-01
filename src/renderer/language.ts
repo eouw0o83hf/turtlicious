@@ -55,6 +55,7 @@ export const COMMAND_NAMES = [
   'REPEAT',
   'TO',
   'END',
+  'OUTLINE',
   // Block delimiters — structural tokens that appear in the command stream
   '[',
   ']',
@@ -361,6 +362,17 @@ export const COMMANDS: CommandSpec[] = [
     parameters: [],
     example: 'END',
   },
+  {
+    name: 'OUTLINE',
+    aliases: [],
+    category: 'procedure',
+    description:
+      'Execute a procedure off-screen and draw only the exact rendered outline of its output.',
+    parameters: [
+      { name: 'name', type: 'string', description: 'Procedure name to outline' },
+    ],
+    example: 'OUTLINE FOO',
+  },
 ];
 
 /**
@@ -455,7 +467,7 @@ export function getControlCommands(): CommandName[] {
  * Procedure-definition commands.
  */
 export function getProcedureCommands(): CommandName[] {
-  return ['TO', 'END'];
+  return ['TO', 'END', 'OUTLINE'];
 }
 
 // ============================================================================

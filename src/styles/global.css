@@ -159,6 +159,10 @@ textarea {
   transition: background 0.15s;
 }
 
+.outline-btn {
+  padding-inline: 14px;
+}
+
 .run-btn:disabled {
   cursor: wait;
 }

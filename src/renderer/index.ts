@@ -21,6 +21,7 @@ export {
   logoInterpreterLayer,
   logoInterpreterLayerWithBrushState,
 } from './interpreter';
+export { createOutlineProgram } from './outline';
 export { createSvgMarkup } from './svg';
 export { brushLayer } from './layers';
 export {

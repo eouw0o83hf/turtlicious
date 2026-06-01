@@ -7,6 +7,7 @@ import {
   DEFAULT_BRUSH_CONFIG,
   RenderMonad,
   brushLayer,
+  createOutlineProgram,
   createSvgMarkup,
   interpretLogo,
   logoInterpreterLayer,
@@ -17,6 +18,7 @@ import {
   getTurtleCommands,
   getStyleCommands,
   getControlCommands,
+  getProcedureCommands,
   COMMAND_NAMES,
 } from './renderer';
 
@@ -106,6 +108,35 @@ star:
     expect(result.errors).toEqual([]);
     expect(result.segments).toHaveLength(5);
     expectPoint(result.turtle.heading, 720);
+  });
+
+  it('supports OUTLINE to draw only the rendered outline of a procedure', () => {
+    const result = interpretLogo(`
+TO FOO [
+  SB SQUARE
+  SBV WIDTH 50
+  FD 100
+]
+END
+
+OUTLINE FOO
+`);
+
+    const xs = result.segments.flatMap((segment) => [segment.x1, segment.x2]);
+    const ys = result.segments.flatMap((segment) => [segment.y1, segment.y2]);
+
+    expect(result.errors).toEqual([]);
+    expect(result.segments).toHaveLength(4);
+    expect(Math.max(...xs) - Math.min(...xs)).toBeCloseTo(50, 6);
+    expect(Math.max(...ys) - Math.min(...ys)).toBeCloseTo(100, 6);
+  });
+
+  it('reports missing or unknown procedure names for OUTLINE', () => {
+    const missingName = interpretLogo('OUTLINE');
+    const unknownName = interpretLogo('OUTLINE MISSING_PROC');
+
+    expect(missingName.errors).toContain('OUTLINE expects a procedure name.');
+    expect(unknownName.errors).toContain('Unknown procedure: MISSING_PROC');
   });
 
   it('substitutes numeric variables and arithmetic in later commands', () => {
@@ -248,6 +279,38 @@ describe('render stack', () => {
     expect(svg).toContain('stroke-linejoin="miter"');
     expect(svg).toContain('stroke-linecap="butt"');
   });
+
+  it('creates an outline program from the final rendered stroke footprint', () => {
+    const outlinedSource = createOutlineProgram(
+      renderLogoStack('SB square\nSBV width 50\nFD 100').value,
+    );
+    const outlined = renderLogoStack(outlinedSource).value;
+    const xs = outlined.segments.flatMap((segment) => [segment.x1, segment.x2]);
+    const ys = outlined.segments.flatMap((segment) => [segment.y1, segment.y2]);
+
+    expect(outlined.errors).toEqual([]);
+    expect(outlined.segments).toHaveLength(4);
+    expect(Math.max(...xs) - Math.min(...xs)).toBeCloseTo(50, 6);
+    expect(Math.max(...ys) - Math.min(...ys)).toBeCloseTo(100, 6);
+  });
+
+  it('keeps orthogonal square-brush outlines axis-aligned for right-angle paths', () => {
+    const outlinedSource = createOutlineProgram(
+      renderLogoStack('SB square\nSBV width 100\nFD 100\nRT 90\nFD 100').value,
+    );
+    const outlined = renderLogoStack(outlinedSource).value;
+    const epsilon = 1e-6;
+
+    expect(outlinedSource).toContain('PD');
+    expect(outlined.errors).toEqual([]);
+    expect(outlined.segments.length).toBeGreaterThan(0);
+
+    outlined.segments.forEach((segment) => {
+      const isVertical = Math.abs(segment.x1 - segment.x2) <= epsilon;
+      const isHorizontal = Math.abs(segment.y1 - segment.y2) <= epsilon;
+      expect(isVertical || isHorizontal).toBe(true);
+    });
+  });
 });
 
 describe('brush layer', () => {
@@ -350,6 +413,12 @@ describe('interpreter implementation constraints', () => {
     // Test control commands
     const controlCmds = getControlCommands();
     expect(controlCmds).toContain('REPEAT');
+
+    // Test procedure commands
+    const procedureCmds = getProcedureCommands();
+    expect(procedureCmds).toContain('TO');
+    expect(procedureCmds).toContain('END');
+    expect(procedureCmds).toContain('OUTLINE');
   });
 
   it('CONSTRAINT: CommandName type covers all command group members', () => {
@@ -364,6 +433,7 @@ describe('interpreter implementation constraints', () => {
       ...getTurtleCommands(),
       ...getStyleCommands(),
       ...getControlCommands(),
+      ...getProcedureCommands(),
     ];
 
     const nameSet = new Set<string>(COMMAND_NAMES);
@@ -402,6 +472,11 @@ describe('interpreter implementation constraints', () => {
         desc: 'SETBRUSH command',
       },
       { code: 'REPEAT 2 [FD 10]', expectedSegments: 2, desc: 'REPEAT command' },
+      {
+        code: 'TO FOO [ SB SQUARE SBV WIDTH 50 FD 100 ] END OUTLINE FOO',
+        expectedSegments: 4,
+        desc: 'OUTLINE command',
+      },
     ];
 
     commandTests.forEach((test) => {

@@ -11,6 +11,7 @@ import {
 import {
   DEFAULT_BRUSH_CONFIG,
   DEFAULT_CODE,
+  createOutlineProgram,
   createSvgMarkup,
   renderLogoStack,
   type BrushConfig,
@@ -67,6 +68,10 @@ function App() {
     link.download = 'turtlicious-turtle-sketch.svg';
     link.click();
     URL.revokeObjectURL(url);
+  }, [result]);
+
+  const handleOutline = useCallback(() => {
+    setCode(createOutlineProgram(result));
   }, [result]);
 
   const handleKeyDown = useCallback(
@@ -296,6 +301,14 @@ function App() {
         </div>
 
         <div className="toolbar">
+          <button
+            aria-label="Outline current sketch"
+            className="run-btn outline-btn"
+            onClick={handleOutline}
+            type="button"
+          >
+            OUTLINE
+          </button>
           <button
             aria-label="Open configuration"
             className="icon-btn gear-btn"

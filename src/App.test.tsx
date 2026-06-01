@@ -10,6 +10,9 @@ describe('App', () => {
 
     expect(screen.getByAltText(/turtlicious/i)).toBeInTheDocument();
     expect(
+      screen.getByRole('button', { name: /outline current sketch/i }),
+    ).toBeInTheDocument();
+    expect(
       screen.getByRole('button', { name: /open configuration/i }),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /svg/i })).toBeInTheDocument();
@@ -113,5 +116,24 @@ describe('App', () => {
     );
     expect(screen.getByLabelText(/square brush width/i)).toHaveValue(7.5);
     expect(screen.getByLabelText(/square brush smooth corners/i)).toBeChecked();
+  });
+
+  it('replaces the program with an outline sketch', async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    const editor = screen.getByLabelText(
+      /editable turtle source/i,
+    ) as HTMLTextAreaElement;
+
+    await user.clear(editor);
+    await user.type(editor, 'sb square{enter}sbv width 50{enter}fd 100');
+    await user.click(
+      screen.getByRole('button', { name: /outline current sketch/i }),
+    );
+
+    expect(editor.value).not.toContain('sbv width 50');
+    expect(screen.getByText(/4 trails/i)).toBeInTheDocument();
   });
 });

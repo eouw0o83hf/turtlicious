@@ -6,6 +6,8 @@
 // ---------------------------------------------------------------------------
 
 import { RenderMonad, type RenderingStackMember } from './monad';
+import { brushLayer } from './layers';
+import { createOutlineProgram } from './outline';
 import {
   DEFAULT_BRUSH_CONFIG,
   DEFAULT_BRUSH_STATE,
@@ -39,6 +41,7 @@ import {
   getPenCommands,
   getControlCommands,
   getBlockTokens,
+  getProcedureCommands,
 } from './language';
 
 // Re-export default program for public API
@@ -287,6 +290,22 @@ function createBrushState(initialBrushState?: BrushState): BrushState {
     name: baseState.name,
     config: cloneBrushConfig(baseState.config),
   };
+}
+
+function cloneTurtleState(turtle: Turtle): Turtle {
+  return {
+    x: turtle.x,
+    y: turtle.y,
+    heading: turtle.heading,
+    penDown: turtle.penDown,
+  };
+}
+
+function restoreVariables(target: Map<string, number>, snapshot: Map<string, number>) {
+  target.clear();
+  snapshot.forEach((value, key) => {
+    target.set(key, value);
+  });
 }
 
 function parseBooleanValueToken(
@@ -555,6 +574,81 @@ export function interpretLogo(
         turtle.y = 0;
         turtle.heading = 0;
         turtle.penDown = true;
+        index += 1;
+        continue;
+      }
+
+      if (matchesCommand(command, ...getProcedureCommands())) {
+        if (matchesCommand(command, 'OUTLINE')) {
+          const procedureNameToken = stream[index + 1];
+          if (
+            !procedureNameToken ||
+            isExpressionTerminator(procedureNameToken) ||
+            matchesCommand(normalizeCommand(procedureNameToken), ...getBlockTokens())
+          ) {
+            errors.push('OUTLINE expects a procedure name.');
+            index += 1;
+            continue;
+          }
+
+          const procedureName = normalizeCommand(procedureNameToken);
+          const procedure = program.procedures.get(procedureName);
+
+          if (!procedure) {
+            errors.push(`Unknown procedure: ${procedureNameToken}`);
+            index += 2;
+            continue;
+          }
+
+          const segmentsStart = segments.length;
+          const errorsStart = errors.length;
+          const turtleSnapshot = cloneTurtleState(turtle);
+          const variablesSnapshot = new Map(variables);
+          const brushSnapshot = createBrushState(brushState);
+          const hasBrushCommandsSnapshot = hasBrushCommands;
+
+          executeRange(procedure, 0, procedure.length, callDepth + 1);
+
+          const procedureSegments = segments.slice(segmentsStart);
+          const procedureBrushState = createBrushState(brushState);
+          const procedureHasBrushCommands = hasBrushCommands;
+          const procedureTurtle = cloneTurtleState(turtle);
+
+          segments.length = segmentsStart;
+          turtle.x = turtleSnapshot.x;
+          turtle.y = turtleSnapshot.y;
+          turtle.heading = turtleSnapshot.heading;
+          turtle.penDown = turtleSnapshot.penDown;
+          restoreVariables(variables, variablesSnapshot);
+          brushState.name = brushSnapshot.name;
+          brushState.config = cloneBrushConfig(brushSnapshot.config);
+          hasBrushCommands = hasBrushCommandsSnapshot;
+
+          if (errors.length === errorsStart && procedureSegments.length > 0) {
+            const renderedProcedureResult = brushLayer(
+              brushSnapshot.name,
+              cloneBrushConfig(brushSnapshot.config),
+            ).run({
+              segments: procedureSegments,
+              turtle: procedureTurtle,
+              errors: [],
+              stepCount: 0,
+              style: DEFAULT_STYLE,
+              brushState: procedureBrushState,
+              hasBrushCommands: procedureHasBrushCommands,
+            }).value;
+
+            const outlineProgram = createOutlineProgram(renderedProcedureResult);
+            if (outlineProgram) {
+              const outlineTokens = tokenizeLogo(outlineProgram);
+              executeRange(outlineTokens, 0, outlineTokens.length, callDepth + 1);
+            }
+          }
+
+          index += 2;
+          continue;
+        }
+
         index += 1;
         continue;
       }
