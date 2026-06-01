@@ -139,6 +139,24 @@ OUTLINE FOO
     expect(unknownName.errors).toContain('Unknown procedure: MISSING_PROC');
   });
 
+  it('keeps active brush settings when executing OUTLINE', () => {
+    const result = renderLogoStack(`
+TO FOO [
+  FD 100
+]
+END
+
+SB SQUARE
+SBV WIDTH 50
+OUTLINE FOO
+`).value;
+
+    expect(result.errors).toEqual([]);
+    expect(result.style.strokeWidth).toBe(50);
+    expect(result.style.strokeLinejoin).toBe('miter');
+    expect(result.style.strokeLinecap).toBe('butt');
+  });
+
   it('substitutes numeric variables and arithmetic in later commands', () => {
     const result = interpretLogo(`
 $A = 10

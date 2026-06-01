@@ -515,18 +515,29 @@ function contourToCommands(
   return lines;
 }
 
-export function createOutlineProgram(result: LogoResult) {
+export type CreateOutlineProgramOptions = {
+  resetBrush?: boolean;
+};
+
+export function createOutlineProgram(
+  result: LogoResult,
+  options: CreateOutlineProgramOptions = {},
+) {
+  const { resetBrush = true } = options;
   const contours = buildOutlineContours(result);
 
   if (contours.length === 0) {
     return '';
   }
 
-  const lines = ['SB default'];
+  const lines = resetBrush ? ['SB default'] : [];
   const current = { point: [0, 0] as Point, heading: 0 };
 
-  contours.forEach((contour) => {
-    lines.push('', ...contourToCommands(contour, current));
+  contours.forEach((contour, index) => {
+    if (lines.length > 0 || index > 0) {
+      lines.push('');
+    }
+    lines.push(...contourToCommands(contour, current));
   });
 
   return lines.join('\n').trim();

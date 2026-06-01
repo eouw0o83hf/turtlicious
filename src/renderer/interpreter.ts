@@ -301,7 +301,10 @@ function cloneTurtleState(turtle: Turtle): Turtle {
   };
 }
 
-function restoreVariables(target: Map<string, number>, snapshot: Map<string, number>) {
+function restoreVariables(
+  target: Map<string, number>,
+  snapshot: Map<string, number>,
+) {
   target.clear();
   snapshot.forEach((value, key) => {
     target.set(key, value);
@@ -584,7 +587,10 @@ export function interpretLogo(
           if (
             !procedureNameToken ||
             isExpressionTerminator(procedureNameToken) ||
-            matchesCommand(normalizeCommand(procedureNameToken), ...getBlockTokens())
+            matchesCommand(
+              normalizeCommand(procedureNameToken),
+              ...getBlockTokens(),
+            )
           ) {
             errors.push('OUTLINE expects a procedure name.');
             index += 1;
@@ -638,10 +644,20 @@ export function interpretLogo(
               hasBrushCommands: procedureHasBrushCommands,
             }).value;
 
-            const outlineProgram = createOutlineProgram(renderedProcedureResult);
+            const outlineProgram = createOutlineProgram(
+              renderedProcedureResult,
+              {
+                resetBrush: false,
+              },
+            );
             if (outlineProgram) {
               const outlineTokens = tokenizeLogo(outlineProgram);
-              executeRange(outlineTokens, 0, outlineTokens.length, callDepth + 1);
+              executeRange(
+                outlineTokens,
+                0,
+                outlineTokens.length,
+                callDepth + 1,
+              );
             }
           }
 
