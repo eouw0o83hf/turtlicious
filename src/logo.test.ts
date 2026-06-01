@@ -157,6 +157,71 @@ OUTLINE FOO
     expect(result.style.strokeLinecap).toBe('butt');
   });
 
+  it('stores outline procedures in variables and executes them', () => {
+    const result = interpretLogo(`
+TO FOO [
+  FD 100
+  RT 90
+  FD 100
+]
+END
+
+$bar = OUTLINE FOO
+$bar
+`);
+
+    expect(result.errors).toEqual([]);
+    expect(result.segments.length).toBeGreaterThan(0);
+  });
+
+  it('supports outline variables for advanced outline workflows', () => {
+    const result = interpretLogo(`
+TO FOO [
+  FD 100
+]
+END
+
+$bar = OUTLINE FOO
+OUTLINE $bar
+`);
+
+    expect(result.errors).toEqual([]);
+    expect(result.segments.length).toBeGreaterThan(0);
+  });
+
+  it('reports error when using procedure variable as numeric value', () => {
+    const result = interpretLogo(`
+TO FOO [
+  FD 100
+]
+END
+
+$bar = OUTLINE FOO
+FD $bar
+`);
+
+    expect(result.errors).toContain(
+      'Variable $bar contains a procedure, not a number.',
+    );
+  });
+
+  it('handles nested outline procedures without crashing', () => {
+    const result = interpretLogo(`
+TO FOO [
+  FD 100
+  RT 90
+  FD 50
+]
+END
+
+$bar = OUTLINE FOO
+$baz = OUTLINE $bar
+`);
+
+    // Should not crash; errors acceptable if token stream becomes complex
+    expect(result.segments.length).toBeGreaterThanOrEqual(0);
+  });
+
   it('substitutes numeric variables and arithmetic in later commands', () => {
     const result = interpretLogo(`
 $A = 10

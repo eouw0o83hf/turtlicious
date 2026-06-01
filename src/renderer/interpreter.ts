@@ -93,14 +93,15 @@ function tokenizeLogo(source: string) {
   return tokens;
 }
 
-function normalizeCommand(token: string) {
+function normalizeCommand(token: string | undefined) {
+  if (!token) return '';
   return token.toUpperCase().replace(/:$/, '');
 }
 
 function parseNumericExpression(
   tokens: string[],
   startIndex: number,
-  variables: Map<string, number>,
+  variables: Map<string, number | string>,
   errors: string[],
 ) {
   let index = startIndex;
@@ -136,7 +137,13 @@ function parseNumericExpression(
         return { ok: true, value: 0 };
       }
 
-      return { ok: true, value };
+      const numValue = value as number;
+      if (!Number.isFinite(numValue)) {
+        errors.push(`Variable ${token} contains a procedure, not a number.`);
+        return { ok: true, value: 0 };
+      }
+
+      return { ok: true, value: numValue };
     }
 
     const value = Number(token);
@@ -302,8 +309,8 @@ function cloneTurtleState(turtle: Turtle): Turtle {
 }
 
 function restoreVariables(
-  target: Map<string, number>,
-  snapshot: Map<string, number>,
+  target: Map<string, number | string>,
+  snapshot: Map<string, number | string>,
 ) {
   target.clear();
   snapshot.forEach((value, key) => {
@@ -313,14 +320,18 @@ function restoreVariables(
 
 function parseBooleanValueToken(
   token: string | undefined,
-  variables: Map<string, number>,
+  variables: Map<string, number | string>,
 ) {
   if (!token) return { ok: false, value: false };
 
   if (isVariableToken(token)) {
     const value = variables.get(normalizeVariableName(token));
     if (value === undefined) return { ok: false, value: false };
-    return { ok: true, value: value !== 0 };
+    const numValue = value as number;
+    return {
+      ok: true,
+      value: Number.isFinite(numValue) ? numValue !== 0 : value !== '',
+    };
   }
 
   const normalizedToken = `${token}`.toLowerCase();
@@ -348,7 +359,7 @@ export function interpretLogo(
   const turtle: Turtle = { x: 0, y: 0, heading: 0, penDown: true };
   const segments: Segment[] = [];
   const errors: string[] = [...program.errors];
-  const variables = new Map<string, number>();
+  const variables = new Map<string, number | string>();
   const brushState = createBrushState(initialBrushState);
   let hasBrushCommands = false;
   let stepCount = 0;
@@ -381,7 +392,7 @@ export function interpretLogo(
 
     while (index < end && stepCount < MAX_STEPS) {
       const token = stream[index];
-      if (token === LINE_BREAK) {
+      if (!token || token === LINE_BREAK) {
         index += 1;
         continue;
       }
@@ -390,6 +401,107 @@ export function interpretLogo(
       stepCount += 1;
 
       if (isVariableToken(token) && stream[index + 1] === ASSIGN_TOKEN) {
+        const nextCommand = normalizeCommand(stream[index + 2]);
+
+        if (matchesCommand(nextCommand, 'OUTLINE')) {
+          const procedureNameToken = stream[index + 3];
+          if (
+            !procedureNameToken ||
+            isExpressionTerminator(procedureNameToken) ||
+            matchesCommand(
+              normalizeCommand(procedureNameToken),
+              ...getBlockTokens(),
+            )
+          ) {
+            errors.push('OUTLINE expects a procedure name.');
+            index += 2;
+            continue;
+          }
+
+          const procedureNameOrVar = normalizeVariableName(procedureNameToken);
+          let procedure: string[] | undefined;
+
+          if (isVariableToken(procedureNameToken)) {
+            const storedValue = variables.get(procedureNameOrVar);
+            if (storedValue === undefined) {
+              errors.push(`Unknown variable: ${procedureNameToken}`);
+              index += 4;
+              continue;
+            }
+            const strValue = storedValue as string;
+            if (Number.isFinite(strValue as unknown as number)) {
+              errors.push(
+                `Variable ${procedureNameToken} is not an outline procedure.`,
+              );
+              index += 4;
+              continue;
+            }
+            procedure = tokenizeLogo(strValue);
+          } else {
+            procedure = program.procedures.get(
+              normalizeCommand(procedureNameToken),
+            );
+            if (!procedure) {
+              errors.push(`Unknown procedure: ${procedureNameToken}`);
+              index += 4;
+              continue;
+            }
+          }
+
+          const segmentsStart = segments.length;
+          const errorsStart = errors.length;
+          const turtleSnapshot = cloneTurtleState(turtle);
+          const variablesSnapshot = new Map(variables);
+          const brushSnapshot = createBrushState(brushState);
+          const hasBrushCommandsSnapshot = hasBrushCommands;
+
+          executeRange(procedure, 0, procedure.length, callDepth + 1);
+
+          const procedureSegments = segments.slice(segmentsStart);
+          const procedureBrushState = createBrushState(brushState);
+          const procedureHasBrushCommands = hasBrushCommands;
+          const procedureTurtle = cloneTurtleState(turtle);
+
+          segments.length = segmentsStart;
+          turtle.x = turtleSnapshot.x;
+          turtle.y = turtleSnapshot.y;
+          turtle.heading = turtleSnapshot.heading;
+          turtle.penDown = turtleSnapshot.penDown;
+          restoreVariables(variables, variablesSnapshot);
+          brushState.name = brushSnapshot.name;
+          brushState.config = cloneBrushConfig(brushSnapshot.config);
+          hasBrushCommands = hasBrushCommandsSnapshot;
+
+          if (errors.length === errorsStart && procedureSegments.length > 0) {
+            const renderedProcedureResult = brushLayer(
+              brushSnapshot.name,
+              cloneBrushConfig(brushSnapshot.config),
+            ).run({
+              segments: procedureSegments,
+              turtle: procedureTurtle,
+              errors: [],
+              stepCount: 0,
+              style: DEFAULT_STYLE,
+              brushState: procedureBrushState,
+              hasBrushCommands: procedureHasBrushCommands,
+            }).value;
+
+            const outlineProgram = createOutlineProgram(
+              renderedProcedureResult,
+              {
+                resetBrush: false,
+              },
+            );
+            if (outlineProgram) {
+              const variableName = normalizeVariableName(token);
+              variables.set(variableName, outlineProgram);
+            }
+          }
+
+          index += 4;
+          continue;
+        }
+
         const expression = parseNumericExpression(
           stream,
           index + 2,
@@ -597,8 +709,30 @@ export function interpretLogo(
             continue;
           }
 
-          const procedureName = normalizeCommand(procedureNameToken);
-          const procedure = program.procedures.get(procedureName);
+          const procedureNameOrVar = normalizeVariableName(procedureNameToken);
+          let procedure: string[] | undefined;
+
+          if (isVariableToken(procedureNameToken)) {
+            const storedValue = variables.get(procedureNameOrVar);
+            if (storedValue === undefined) {
+              errors.push(`Unknown variable: ${procedureNameToken}`);
+              index += 2;
+              continue;
+            }
+            const strValue = storedValue as string;
+            if (Number.isFinite(strValue as unknown as number)) {
+              errors.push(
+                `Variable ${procedureNameToken} is not an outline procedure.`,
+              );
+              index += 2;
+              continue;
+            }
+            procedure = tokenizeLogo(strValue);
+          } else {
+            procedure = program.procedures.get(
+              normalizeCommand(procedureNameToken),
+            );
+          }
 
           if (!procedure) {
             errors.push(`Unknown procedure: ${procedureNameToken}`);
@@ -674,6 +808,20 @@ export function interpretLogo(
         executeRange(procedure, 0, procedure.length, callDepth + 1);
         index += 1;
         continue;
+      }
+
+      if (isVariableToken(command)) {
+        const storedValue = variables.get(normalizeVariableName(command));
+        if (storedValue !== undefined) {
+          const numValue = storedValue as number;
+          if (!Number.isFinite(numValue)) {
+            const strValue = storedValue as string;
+            const varProcedure = tokenizeLogo(strValue);
+            executeRange(varProcedure, 0, varProcedure.length, callDepth + 1);
+            index += 1;
+            continue;
+          }
+        }
       }
 
       errors.push(`Unknown command: ${token}`);
