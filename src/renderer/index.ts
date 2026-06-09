@@ -79,7 +79,7 @@ import {
 
 export function renderLogoStack(
   source: string,
-  brush: BrushName = 'default',
+  brush: BrushName = 'square',
   brushConfig: BrushConfig = DEFAULT_BRUSH_CONFIG,
 ) {
   return RenderMonad.of(source)

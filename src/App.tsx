@@ -40,7 +40,7 @@ function App() {
   const [leftPaneWidth, setLeftPaneWidth] = useState(DEFAULT_LEFT_PANE_WIDTH);
   const [sketchView, setSketchView] = useState({ x: 0, y: 0, scale: 1 });
   const [isPanning, setIsPanning] = useState(false);
-  const [brushName, setBrushName] = useState<BrushName>('default');
+  const [brushName, setBrushName] = useState<BrushName>('square');
   const [brushConfig, setBrushConfig] =
     useState<BrushConfig>(DEFAULT_BRUSH_CONFIG);
   const workspaceRef = useRef<HTMLElement>(null);

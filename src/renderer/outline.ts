@@ -530,7 +530,7 @@ export function createOutlineProgram(
     return '';
   }
 
-  const lines = resetBrush ? ['SB default'] : [];
+  const lines = resetBrush ? ['SB square'] : [];
   const current = { point: [0, 0] as Point, heading: 0 };
 
   contours.forEach((contour, index) => {
@@ -554,7 +554,7 @@ export function createOutlineProgramFromSegments(
     stepCount: 0,
     turtle: { x: 0, y: 0, heading: 0, penDown: true },
     brushState: {
-      name: 'default',
+      name: 'square',
       config: { square: { width: 5, smooth: false } },
     },
     hasBrushCommands: false,

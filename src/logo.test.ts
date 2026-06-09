@@ -248,7 +248,7 @@ FD $D / 5
   });
 
   it('supports case-invariant brush style commands and shorthands', () => {
-    const result = interpretLogo('Sb SqUaRe SBV width 50 sBv smooth true');
+    const result = interpretLogo('Sb SqUaRe sbw 50 sBv smooth true');
 
     expect(result.errors).toEqual([]);
     expect(result.brushState.name).toBe('square');
@@ -509,6 +509,8 @@ describe('interpreter implementation constraints', () => {
     const styleCmds = getStyleCommands();
     expect(styleCmds).toContain('SETBRUSH');
     expect(styleCmds).toContain('SB');
+    expect(styleCmds).toContain('SETBRUSHWIDTH');
+    expect(styleCmds).toContain('SBW');
     expect(styleCmds).toContain('SETBRUSHVALUE');
     expect(styleCmds).toContain('SBV');
 
@@ -572,6 +574,11 @@ describe('interpreter implementation constraints', () => {
         code: 'SB RAINBOW FD 10',
         expectedSegments: 1,
         desc: 'SETBRUSH command',
+      },
+      {
+        code: 'SB SQUARE SBW 50 FD 10',
+        expectedSegments: 1,
+        desc: 'SETBRUSHWIDTH command',
       },
       { code: 'REPEAT 2 [FD 10]', expectedSegments: 2, desc: 'REPEAT command' },
       {

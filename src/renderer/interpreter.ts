@@ -681,6 +681,26 @@ export function interpretLogo(
         continue;
       }
 
+      if (matchesCommand(command, 'SETBRUSHWIDTH', 'SBW')) {
+        const widthExpression = parseNumericExpression(
+          stream,
+          index + 1,
+          variables,
+          errors,
+        );
+
+        if (!widthExpression.ok && widthExpression.consumed === 0) {
+          errors.push('SBW expects a numeric value.');
+          index += 1;
+          continue;
+        }
+
+        brushState.config.square.width = widthExpression.value;
+        hasBrushCommands = true;
+        index = widthExpression.nextIndex;
+        continue;
+      }
+
       if (matchesCommand(command, 'HOME')) {
         turtle.x = 0;
         turtle.y = 0;

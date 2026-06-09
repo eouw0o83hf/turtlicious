@@ -47,7 +47,7 @@ export const DEFAULT_BRUSH_CONFIG: BrushConfig = {
 };
 
 export const DEFAULT_BRUSH_STATE: BrushState = {
-  name: 'default',
+  name: 'square',
   config: DEFAULT_BRUSH_CONFIG,
 };
 

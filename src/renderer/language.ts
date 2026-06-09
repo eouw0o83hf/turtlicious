@@ -50,6 +50,8 @@ export const COMMAND_NAMES = [
   'CS',
   'SETBRUSH',
   'SB',
+  'SETBRUSHWIDTH',
+  'SBW',
   'SETBRUSHVALUE',
   'SBV',
   'REPEAT',
@@ -328,6 +330,20 @@ export const COMMANDS: CommandSpec[] = [
     ],
     example: 'SBV WIDTH 50',
   },
+  {
+    name: 'SETBRUSHWIDTH',
+    aliases: ['SBW'],
+    category: 'style',
+    description: 'Shortcut for setting square brush width (equivalent to SBV WIDTH <value>).',
+    parameters: [
+      {
+        name: 'width',
+        type: 'number',
+        description: 'Square brush stroke width',
+      },
+    ],
+    example: 'SBW 50',
+  },
 
   // Control Flow Commands
   {
@@ -453,7 +469,7 @@ export function getTurtleCommands(): CommandName[] {
  * Visual style / brush commands.
  */
 export function getStyleCommands(): CommandName[] {
-  return ['SETBRUSH', 'SB', 'SETBRUSHVALUE', 'SBV'];
+  return ['SETBRUSH', 'SB', 'SETBRUSHWIDTH', 'SBW', 'SETBRUSHVALUE', 'SBV'];
 }
 
 /**

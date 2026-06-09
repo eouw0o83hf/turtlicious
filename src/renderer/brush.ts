@@ -97,15 +97,21 @@ function applyPerSegmentBrushes(
   fallbackName: BrushName,
   fallbackConfig: BrushConfig,
 ): LogoResult {
+  const useProgramBrushSnapshots = result.hasBrushCommands;
+
   const rainbowSegmentTotal = result.segments.filter((segment) => {
-    const brushState = getEffectiveBrushState(segment, fallbackName, fallbackConfig);
+    const brushState = useProgramBrushSnapshots
+      ? getEffectiveBrushState(segment, fallbackName, fallbackConfig)
+      : { name: fallbackName, config: cloneBrushConfig(fallbackConfig) };
     return brushState.name === 'rainbow';
   }).length;
 
   let rainbowSegmentIndex = 0;
 
   const segments: Segment[] = result.segments.map((segment): Segment => {
-    const brushState = getEffectiveBrushState(segment, fallbackName, fallbackConfig);
+    const brushState = useProgramBrushSnapshots
+      ? getEffectiveBrushState(segment, fallbackName, fallbackConfig)
+      : { name: fallbackName, config: cloneBrushConfig(fallbackConfig) };
 
     if (brushState.name === 'default') {
       return {
