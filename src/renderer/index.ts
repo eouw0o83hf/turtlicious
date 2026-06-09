@@ -23,7 +23,7 @@ export {
 } from './interpreter';
 export { createOutlineProgram } from './outline';
 export { createSvgMarkup } from './svg';
-export { brushLayer } from './layers';
+export { brushLayer } from './brush';
 export {
   COMMANDS,
   COMMAND_NAMES,
@@ -70,7 +70,7 @@ export {
 
 import { RenderMonad } from './monad';
 import { logoInterpreterLayerWithBrushState } from './interpreter';
-import { brushLayer } from './layers';
+import { brushLayer } from './brush';
 import {
   DEFAULT_BRUSH_CONFIG,
   type BrushConfig,

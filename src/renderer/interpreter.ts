@@ -6,7 +6,7 @@
 // ---------------------------------------------------------------------------
 
 import { RenderMonad, type RenderingStackMember } from './monad';
-import { brushLayer } from './layers';
+import { brushLayer } from './brush';
 import { createOutlineProgram } from './outline';
 import {
   DEFAULT_BRUSH_CONFIG,

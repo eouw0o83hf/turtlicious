@@ -1,18 +1,18 @@
 // ---------------------------------------------------------------------------
-// Brush layer — applies a visual style to each path segment before rendering.
+// Brush — applies a visual style to each path segment before rendering.
 //
-// Each brush is a named variant; the layer is produced by calling
-// brushLayer(name) and chaining it into a rendering stack.
+// Each brush is a named variant; call brushLayer(name) and chain it into a
+// rendering stack.
 // ---------------------------------------------------------------------------
 
-import { RenderMonad, type RenderingStackMember } from '../monad';
+import { RenderMonad, type RenderingStackMember } from './monad';
 import {
   DEFAULT_BRUSH_CONFIG,
   type BrushConfig,
   type BrushName,
   type LogoResult,
   type SquareBrushOptions,
-} from '../types';
+} from './types';
 
 function normalizeSquareWidth(width: number) {
   if (!Number.isFinite(width)) return DEFAULT_BRUSH_CONFIG.square.width;

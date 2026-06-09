@@ -2,12 +2,16 @@ SHELL := /bin/bash
 APP_NAME := turtlicious
 NPM := npm
 AWS := aws
+DOCKER := docker
 AWS_REGION ?= us-east-1
 NODE_MODULES_STAMP := node_modules/.install-stamp
+DOCKER_IMAGE ?= $(APP_NAME):dev
+DOCKER_CONTAINER ?= $(APP_NAME)-dev
+DOCKER_PORT ?= 8080
 
 export NVM_DIR := $(HOME)/.nvm
 # Source nvm and activate the version pinned in .nvmrc before running Node tools.
-define nvm_use
+define c
 	if [ -n "$$CI" ]; then \
 		:; \
 	elif [ -s "$(NVM_DIR)/nvm.sh" ]; then \
@@ -19,7 +23,7 @@ endef
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install run build test lint typecheck check preview deploy clean
+.PHONY: help install run build test lint typecheck check preview deploy docker clean
 
 help: ## Show available targets.
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "%-18s %s\n", $$1, $$2}'
@@ -53,6 +57,11 @@ preview: install ## Preview the production build locally.
 deploy: build ## Build and deploy dist/ to a preconfigured S3 website bucket.
 	@test -n "$(AWS_S3_BUCKET)" || (echo "AWS_S3_BUCKET is required"; exit 1)
 	$(AWS) s3 sync dist/ s3://$(AWS_S3_BUCKET) --delete --region $(AWS_REGION)
+
+docker: ## Build and run the app container at http://localhost:$(DOCKER_PORT).
+	$(DOCKER) build -t $(DOCKER_IMAGE) .
+	-$(DOCKER) rm -f $(DOCKER_CONTAINER)
+	$(DOCKER) run --name $(DOCKER_CONTAINER) --rm -p $(DOCKER_PORT):80 $(DOCKER_IMAGE)
 
 clean: ## Remove generated local artifacts.
 	rm -rf dist coverage node_modules
