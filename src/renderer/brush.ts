@@ -11,6 +11,8 @@ import {
   type BrushConfig,
   type BrushName,
   type LogoResult,
+  type Segment,
+  type SegmentBrushState,
   type SquareBrushOptions,
 } from './types';
 
@@ -62,6 +64,111 @@ function squareBrush(
   };
 }
 
+function cloneBrushConfig(config: BrushConfig): BrushConfig {
+  return {
+    square: {
+      width: config.square.width,
+      smooth: config.square.smooth,
+    },
+  };
+}
+
+function getEffectiveBrushState(
+  segment: Segment,
+  fallbackName: BrushName,
+  fallbackConfig: BrushConfig,
+): SegmentBrushState {
+  const snapshot = segment.brushState;
+  if (snapshot) {
+    return {
+      name: snapshot.name,
+      config: cloneBrushConfig(snapshot.config),
+    };
+  }
+
+  return {
+    name: fallbackName,
+    config: cloneBrushConfig(fallbackConfig),
+  };
+}
+
+function applyPerSegmentBrushes(
+  result: LogoResult,
+  fallbackName: BrushName,
+  fallbackConfig: BrushConfig,
+): LogoResult {
+  const rainbowSegmentTotal = result.segments.filter((segment) => {
+    const brushState = getEffectiveBrushState(segment, fallbackName, fallbackConfig);
+    return brushState.name === 'rainbow';
+  }).length;
+
+  let rainbowSegmentIndex = 0;
+
+  const segments: Segment[] = result.segments.map((segment): Segment => {
+    const brushState = getEffectiveBrushState(segment, fallbackName, fallbackConfig);
+
+    if (brushState.name === 'default') {
+      return {
+        ...segment,
+        style: {
+          ...segment.style,
+          connectSegments: false,
+          glow: true,
+        },
+      };
+    }
+
+    if (brushState.name === 'rainbow') {
+      const color = `hsl(${((rainbowSegmentIndex / Math.max(rainbowSegmentTotal - 1, 1)) * 360).toFixed(1)}, 100%, 62%)`;
+      rainbowSegmentIndex += 1;
+
+      return {
+        ...segment,
+        color,
+        style: {
+          ...segment.style,
+          connectSegments: false,
+          glow: false,
+        },
+      };
+    }
+
+    const width = normalizeSquareWidth(brushState.config.square.width);
+    const smooth = brushState.config.square.smooth;
+    const strokeLinecap = smooth ? ('round' as const) : ('butt' as const);
+    const strokeLinejoin = smooth ? ('round' as const) : ('miter' as const);
+
+    return {
+      ...segment,
+      style: {
+        ...segment.style,
+        strokeWidth: width,
+        strokeLinecap,
+        strokeLinejoin,
+        connectSegments: true,
+        glow: false,
+      },
+    };
+  });
+
+  const lastSegmentStyle = segments.at(-1)?.style;
+
+  return {
+    ...result,
+    segments,
+    style: {
+      ...result.style,
+      strokeWidth: lastSegmentStyle?.strokeWidth ?? result.style.strokeWidth,
+      strokeLinecap: lastSegmentStyle?.strokeLinecap ?? result.style.strokeLinecap,
+      strokeLinejoin:
+        lastSegmentStyle?.strokeLinejoin ?? result.style.strokeLinejoin,
+      connectSegments:
+        lastSegmentStyle?.connectSegments ?? result.style.connectSegments,
+      glow: segments.some((segment) => segment.style?.glow ?? true),
+    },
+  };
+}
+
 export function brushLayer(
   name: BrushName,
   config: BrushConfig = DEFAULT_BRUSH_CONFIG,
@@ -69,18 +176,19 @@ export function brushLayer(
   return {
     name: `Brush: ${name}`,
     run(result) {
-      const effectiveName = result.hasBrushCommands
-        ? result.brushState.name
-        : name;
-      const effectiveConfig = result.hasBrushCommands
-        ? result.brushState.config
-        : config;
+      const brushed = applyPerSegmentBrushes(result, name, config);
 
-      if (effectiveName === 'default')
-        return RenderMonad.of(defaultBrush(result));
-      if (effectiveName === 'rainbow')
-        return RenderMonad.of(rainbowBrush(result));
-      return RenderMonad.of(squareBrush(result, effectiveConfig.square));
+      if (name === 'default' && !result.hasBrushCommands) {
+        return RenderMonad.of(defaultBrush(brushed));
+      }
+      if (name === 'rainbow' && !result.hasBrushCommands) {
+        return RenderMonad.of(rainbowBrush(brushed));
+      }
+      if (name === 'square' && !result.hasBrushCommands) {
+        return RenderMonad.of(squareBrush(brushed, config.square));
+      }
+
+      return RenderMonad.of(brushed);
     },
   };
 }

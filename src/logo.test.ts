@@ -291,7 +291,7 @@ describe('createSvgMarkup', () => {
     expect(svg).toContain('<svg');
     expect(svg).toContain('aria-label="Turtle sketch"');
     expect(svg).toContain('stroke="#33ff33"');
-    expect(svg).toContain('<line x1="0.00" y1="0.00" x2="0.00" y2="-10.00" />');
+    expect(svg).toContain('<line x1="0.00" y1="0.00" x2="0.00" y2="-10.00"');
     expect(svg).toContain('<polygon');
   });
 
@@ -361,6 +361,25 @@ describe('render stack', () => {
     expect(svg).toContain('stroke-width="50.00"');
     expect(svg).toContain('stroke-linejoin="miter"');
     expect(svg).toContain('stroke-linecap="butt"');
+  });
+
+  it('keeps brush width transient to turtle movement history', () => {
+    const stack = renderLogoStack(`
+SB square
+SBV width 50
+FD 100
+RT 90
+SBV width 10
+FD 100
+`);
+    const svg = createSvgMarkup(stack.value);
+
+    expect(svg).toContain(
+      '<line x1="0.00" y1="0.00" x2="0.00" y2="-100.00" stroke="#33ff33" stroke-width="50.00"',
+    );
+    expect(svg).toContain(
+      '<line x1="0.00" y1="-100.00" x2="100.00" y2="-100.00" stroke="#33ff33" stroke-width="10.00"',
+    );
   });
 
   it('creates an outline program from the final rendered stroke footprint', () => {

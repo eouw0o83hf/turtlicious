@@ -370,7 +370,13 @@ export function interpretLogo(
     const nextY = turtle.y - Math.cos(radians) * distance;
 
     if (turtle.penDown) {
-      segments.push({ x1: turtle.x, y1: turtle.y, x2: nextX, y2: nextY });
+      segments.push({
+        x1: turtle.x,
+        y1: turtle.y,
+        x2: nextX,
+        y2: nextY,
+        brushState: createBrushState(brushState),
+      });
     }
 
     turtle.x = nextX;

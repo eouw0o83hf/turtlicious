@@ -8,6 +8,8 @@ NODE_MODULES_STAMP := node_modules/.install-stamp
 DOCKER_IMAGE ?= $(APP_NAME):dev
 DOCKER_CONTAINER ?= $(APP_NAME)-dev
 DOCKER_PORT ?= 8080
+DOCKER_TEST_IMAGE ?= $(APP_NAME):test
+DOCKER_TEST_TARGET ?= build
 
 export NVM_DIR := $(HOME)/.nvm
 # Source nvm and activate the version pinned in .nvmrc before running Node tools.
@@ -23,7 +25,7 @@ endef
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install run build test lint typecheck check preview deploy docker clean
+.PHONY: help install run build test lint typecheck check preview deploy docker docker-test clean
 
 help: ## Show available targets.
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "%-18s %s\n", $$1, $$2}'
@@ -62,6 +64,10 @@ docker: ## Build and run the app container at http://localhost:$(DOCKER_PORT).
 	$(DOCKER) build -t $(DOCKER_IMAGE) .
 	-$(DOCKER) rm -f $(DOCKER_CONTAINER)
 	$(DOCKER) run --name $(DOCKER_CONTAINER) --rm -p $(DOCKER_PORT):80 $(DOCKER_IMAGE)
+
+docker-test: ## Build a test image and run unit tests in Docker.
+	$(DOCKER) build --target $(DOCKER_TEST_TARGET) -t $(DOCKER_TEST_IMAGE) .
+	$(DOCKER) run --rm $(DOCKER_TEST_IMAGE) npm test
 
 clean: ## Remove generated local artifacts.
 	rm -rf dist coverage node_modules

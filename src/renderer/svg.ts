@@ -35,7 +35,35 @@ const POINT_MATCH_EPSILON = 1e-6;
 type SegmentRun = {
   points: Point[];
   color?: string;
+  style: {
+    strokeWidth: number;
+    strokeLinecap: LogoResult['style']['strokeLinecap'];
+    strokeLinejoin: LogoResult['style']['strokeLinejoin'];
+    connectSegments: boolean;
+    glow: boolean;
+  };
 };
+
+function resolveSegmentStyle(result: LogoResult, segment: LogoResult['segments'][number]) {
+  return {
+    strokeWidth: segment.style?.strokeWidth ?? result.style.strokeWidth,
+    strokeLinecap: segment.style?.strokeLinecap ?? result.style.strokeLinecap,
+    strokeLinejoin:
+      segment.style?.strokeLinejoin ?? result.style.strokeLinejoin,
+    connectSegments: segment.style?.connectSegments ?? result.style.connectSegments,
+    glow: segment.style?.glow ?? result.style.glow,
+  };
+}
+
+function segmentStylesMatch(a: SegmentRun['style'], b: SegmentRun['style']) {
+  return (
+    a.strokeWidth === b.strokeWidth &&
+    a.strokeLinecap === b.strokeLinecap &&
+    a.strokeLinejoin === b.strokeLinejoin &&
+    a.connectSegments === b.connectSegments &&
+    a.glow === b.glow
+  );
+}
 
 function pointsMatch(a: Point, b: Point) {
   return (
@@ -50,9 +78,19 @@ function buildConnectedRuns(result: LogoResult) {
   for (const segment of result.segments) {
     const start: Point = [segment.x1, segment.y1];
     const end: Point = [segment.x2, segment.y2];
+    const style = resolveSegmentStyle(result, segment);
     const run = runs.at(-1);
 
-    if (run && run.color === segment.color) {
+    if (!style.connectSegments) {
+      runs.push({ points: [start, end], color: segment.color, style });
+      continue;
+    }
+
+    if (
+      run &&
+      run.color === segment.color &&
+      segmentStylesMatch(run.style, style)
+    ) {
       const lastPoint = run.points[run.points.length - 1];
       if (pointsMatch(lastPoint, start)) {
         run.points.push(end);
@@ -60,7 +98,7 @@ function buildConnectedRuns(result: LogoResult) {
       }
     }
 
-    runs.push({ points: [start, end], color: segment.color });
+    runs.push({ points: [start, end], color: segment.color, style });
   }
 
   return runs;
@@ -121,30 +159,24 @@ export function createSvgMarkup(
     .map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`)
     .join(' ');
 
-  const pathMarkup = result.style.connectSegments
-    ? buildConnectedRuns(result)
-        .map((run) => {
-          const points = run.points
-            .map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`)
-            .join(' ');
-          const stroke =
-            strokeColorOverride ?? run.color ?? result.style.pathColor;
-          const colorAttr = run.color ? ` stroke="${stroke}"` : '';
-          return `<polyline points="${points}"${colorAttr} />`;
-        })
-        .join('\n    ')
-    : result.segments
-        .map((s) => {
-          const stroke =
-            strokeColorOverride ?? s.color ?? result.style.pathColor;
-          const colorAttr = s.color ? ` stroke="${stroke}"` : '';
-          return `<line x1="${s.x1.toFixed(2)}" y1="${s.y1.toFixed(2)}" x2="${s.x2.toFixed(2)}" y2="${s.y2.toFixed(2)}"${colorAttr} />`;
-        })
-        .join('\n    ');
+  const pathMarkup = buildConnectedRuns(result)
+    .map((run) => {
+      const stroke = strokeColorOverride ?? run.color ?? result.style.pathColor;
+      const styleAttr = run.style.glow
+        ? ` style="filter: drop-shadow(0 0 4px ${stroke}bf)"`
+        : '';
 
-  const glowStyle = result.style.glow
-    ? ` style="filter: drop-shadow(0 0 4px ${result.style.pathColor}bf)"`
-    : '';
+      if (run.points.length > 2) {
+        const points = run.points
+          .map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`)
+          .join(' ');
+        return `<polyline points="${points}" stroke="${stroke}" stroke-width="${run.style.strokeWidth.toFixed(2)}" stroke-linecap="${run.style.strokeLinecap}" stroke-linejoin="${run.style.strokeLinejoin}"${styleAttr} />`;
+      }
+
+      const [start, end] = run.points;
+      return `<line x1="${start[0].toFixed(2)}" y1="${start[1].toFixed(2)}" x2="${end[0].toFixed(2)}" y2="${end[1].toFixed(2)}" stroke="${stroke}" stroke-width="${run.style.strokeWidth.toFixed(2)}" stroke-linecap="${run.style.strokeLinecap}" stroke-linejoin="${run.style.strokeLinejoin}"${styleAttr} />`;
+    })
+    .join('\n    ');
 
   const backgroundMarkup = includeBackground
     ? `<rect x="${viewBox.minX}" y="${viewBox.minY}" width="${viewBox.width}" height="${viewBox.height}" fill="#000000" />`
@@ -154,11 +186,9 @@ export function createSvgMarkup(
     ? `<polygon points="${turtlePointMarkup}" fill="${result.style.turtleColor}" opacity="0.9" />`
     : '';
 
-  const baseStroke = strokeColorOverride ?? result.style.pathColor;
-
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox.minX} ${viewBox.minY} ${viewBox.width} ${viewBox.height}" role="img" aria-label="Turtle sketch">
   ${backgroundMarkup}
-  <g stroke="${baseStroke}" stroke-width="${result.style.strokeWidth.toFixed(2)}" stroke-linecap="${result.style.strokeLinecap}" stroke-linejoin="${result.style.strokeLinejoin}" fill="none"${glowStyle}>
+  <g fill="none">
     ${pathMarkup}
   </g>
   ${turtleMarkup}
