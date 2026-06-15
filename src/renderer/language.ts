@@ -58,6 +58,10 @@ export const COMMAND_NAMES = [
   'TO',
   'END',
   'OUTLINE',
+  'ARCR',
+  'ARCL',
+  'CIRCLER',
+  'CIRCLEL',
   // Block delimiters — structural tokens that appear in the command stream
   '[',
   ']',
@@ -237,6 +241,48 @@ export const COMMANDS: CommandSpec[] = [
       { name: 'distance', type: 'number', description: 'Distance in pixels' },
     ],
     example: 'BK 50',
+  },
+  {
+    name: 'CIRCLER',
+    aliases: [],
+    category: 'movement',
+    description: 'Draw a circle to the right (clockwise) with the specified radius.',
+    parameters: [
+      { name: 'radius', type: 'number', description: 'Circle radius in pixels' },
+    ],
+    example: 'CIRCLER 50',
+  },
+  {
+    name: 'ARCR',
+    aliases: [],
+    category: 'movement',
+    description: 'Draw an arc to the right (clockwise) with the specified radius and angle. Turtle moves to the end of the arc.',
+    parameters: [
+      { name: 'radius', type: 'number', description: 'Arc radius in pixels' },
+      { name: 'angle', type: 'number', description: 'Arc angle in degrees' },
+    ],
+    example: 'ARCR 50 90',
+  },
+  {
+    name: 'CIRCLEL',
+    aliases: [],
+    category: 'movement',
+    description: 'Draw a circle to the left (counter-clockwise) with the specified radius.',
+    parameters: [
+      { name: 'radius', type: 'number', description: 'Circle radius in pixels' },
+    ],
+    example: 'CIRCLEL 50',
+  },
+  {
+    name: 'ARCL',
+    aliases: [],
+    category: 'movement',
+    description: 'Draw an arc to the left (counter-clockwise) with the specified radius and angle. Turtle moves to the end of the arc.',
+    parameters: [
+      { name: 'radius', type: 'number', description: 'Arc radius in pixels' },
+      { name: 'angle', type: 'number', description: 'Arc angle in degrees' },
+    ],
+    example: 'ARCL 50 90',
   },
   {
     name: 'RIGHT',

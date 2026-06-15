@@ -151,7 +151,7 @@ function applyPerSegmentBrushes(
         strokeWidth: width,
         strokeLinecap,
         strokeLinejoin,
-        connectSegments: true,
+        connectSegments: segment.type === 'line',
         glow: false,
       },
     };

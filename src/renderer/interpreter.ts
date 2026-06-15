@@ -371,6 +371,7 @@ export function interpretLogo(
 
     if (turtle.penDown) {
       segments.push({
+        type: 'line',
         x1: turtle.x,
         y1: turtle.y,
         x2: nextX,
@@ -381,6 +382,62 @@ export function interpretLogo(
 
     turtle.x = nextX;
     turtle.y = nextY;
+  };
+
+  const drawArc = (radius: number, sweep: number, turnRight: boolean) => {
+    const headingRad = (turtle.heading * Math.PI) / 180;
+    const absRadius = Math.abs(radius);
+
+    // Center is perpendicular to heading: right = +cos/+sin, left = -cos/-sin
+    const cx =
+      turtle.x + (turnRight ? 1 : -1) * absRadius * Math.cos(headingRad);
+    const cy =
+      turtle.y + (turnRight ? 1 : -1) * absRadius * Math.sin(headingRad);
+
+    const startAngle = Math.atan2(turtle.y - cy, turtle.x - cx);
+    // Right turn: center is to the right, turtle goes CCW around center (angles increase)
+    // Left turn: center is to the left, turtle goes CW around center (angles decrease)
+    const endAngle =
+      startAngle + ((turnRight ? 1 : -1) * (sweep * Math.PI)) / 180;
+
+    if (turtle.penDown) {
+      segments.push({
+        type: 'arc',
+        cx,
+        cy,
+        radius: absRadius,
+        startAngle,
+        endAngle,
+        // direction: 1 = CCW (angles increase), -1 = CW (angles decrease)
+        direction: turnRight ? 1 : -1,
+        brushState: createBrushState(brushState),
+      });
+    }
+
+    turtle.x = cx + absRadius * Math.cos(endAngle);
+    turtle.y = cy + absRadius * Math.sin(endAngle);
+    turtle.heading += turnRight ? sweep : -sweep;
+  };
+
+  const drawCircle = (radius: number, turnRight: boolean) => {
+    const headingRad = (turtle.heading * Math.PI) / 180;
+    const absRadius = Math.abs(radius);
+
+    const cx =
+      turtle.x + (turnRight ? 1 : -1) * absRadius * Math.cos(headingRad);
+    const cy =
+      turtle.y + (turnRight ? 1 : -1) * absRadius * Math.sin(headingRad);
+
+    if (turtle.penDown) {
+      segments.push({
+        type: 'circle',
+        cx,
+        cy,
+        radius: absRadius,
+        brushState: createBrushState(brushState),
+      });
+    }
+    // Full circle: turtle returns to start position, heading unchanged
   };
 
   const executeRange = (
@@ -596,6 +653,96 @@ export function interpretLogo(
         if (matchesCommand(command, 'LT', 'LEFT')) turtle.heading -= amount;
 
         index = amountExpression.nextIndex;
+        continue;
+      }
+
+      if (matchesCommand(command, 'CIRCLER')) {
+        const radiusExpression = parseNumericExpression(
+          stream,
+          index + 1,
+          variables,
+          errors,
+        );
+        if (!radiusExpression.ok && radiusExpression.consumed === 0) {
+          errors.push('CIRCLER expects a radius value.');
+          index += 1;
+          continue;
+        }
+        drawCircle(radiusExpression.value, true);
+        index = radiusExpression.nextIndex;
+        continue;
+      }
+
+      if (matchesCommand(command, 'CIRCLEL')) {
+        const radiusExpression = parseNumericExpression(
+          stream,
+          index + 1,
+          variables,
+          errors,
+        );
+        if (!radiusExpression.ok && radiusExpression.consumed === 0) {
+          errors.push('CIRCLEL expects a radius value.');
+          index += 1;
+          continue;
+        }
+        drawCircle(radiusExpression.value, false);
+        index = radiusExpression.nextIndex;
+        continue;
+      }
+
+      if (matchesCommand(command, 'ARCR')) {
+        const radiusExpression = parseNumericExpression(
+          stream,
+          index + 1,
+          variables,
+          errors,
+        );
+        if (!radiusExpression.ok && radiusExpression.consumed === 0) {
+          errors.push('ARCR expects a radius value.');
+          index += 1;
+          continue;
+        }
+        const angleExpression = parseNumericExpression(
+          stream,
+          radiusExpression.nextIndex,
+          variables,
+          errors,
+        );
+        if (!angleExpression.ok && angleExpression.consumed === 0) {
+          errors.push('ARCR expects an angle value.');
+          index = radiusExpression.nextIndex;
+          continue;
+        }
+        drawArc(radiusExpression.value, angleExpression.value, true);
+        index = angleExpression.nextIndex;
+        continue;
+      }
+
+      if (matchesCommand(command, 'ARCL')) {
+        const radiusExpression = parseNumericExpression(
+          stream,
+          index + 1,
+          variables,
+          errors,
+        );
+        if (!radiusExpression.ok && radiusExpression.consumed === 0) {
+          errors.push('ARCL expects a radius value.');
+          index += 1;
+          continue;
+        }
+        const angleExpression = parseNumericExpression(
+          stream,
+          radiusExpression.nextIndex,
+          variables,
+          errors,
+        );
+        if (!angleExpression.ok && angleExpression.consumed === 0) {
+          errors.push('ARCL expects an angle value.');
+          index = radiusExpression.nextIndex;
+          continue;
+        }
+        drawArc(radiusExpression.value, angleExpression.value, false);
+        index = angleExpression.nextIndex;
         continue;
       }
 

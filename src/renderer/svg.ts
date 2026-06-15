@@ -4,7 +4,7 @@
 // produces an SVG string ready for dangerouslySetInnerHTML or file export.
 // ---------------------------------------------------------------------------
 
-import type { LogoResult, Point } from './types';
+import type { LogoResult, Point, Segment } from './types';
 
 type SvgRenderOptions = {
   includeTurtle?: boolean;
@@ -32,30 +32,91 @@ const DEFAULT_BOUNDS: SketchBounds = {
 
 const POINT_MATCH_EPSILON = 1e-6;
 
-type SegmentRun = {
-  points: Point[];
-  color?: string;
-  style: {
-    strokeWidth: number;
-    strokeLinecap: LogoResult['style']['strokeLinecap'];
-    strokeLinejoin: LogoResult['style']['strokeLinejoin'];
-    connectSegments: boolean;
-    glow: boolean;
-  };
+type ResolvedStyle = {
+  strokeWidth: number;
+  strokeLinecap: LogoResult['style']['strokeLinecap'];
+  strokeLinejoin: LogoResult['style']['strokeLinejoin'];
+  connectSegments: boolean;
+  glow: boolean;
 };
 
-function resolveSegmentStyle(result: LogoResult, segment: LogoResult['segments'][number]) {
+type LineRun = {
+  type: 'line-run';
+  points: Point[];
+  color?: string;
+  style: ResolvedStyle;
+};
+
+type CircleElement = {
+  type: 'circle';
+  cx: number;
+  cy: number;
+  radius: number;
+  color?: string;
+  style: ResolvedStyle;
+};
+
+type ArcElement = {
+  type: 'arc';
+  cx: number;
+  cy: number;
+  radius: number;
+  startAngle: number;
+  endAngle: number;
+  direction: 1 | -1;
+  color?: string;
+  style: ResolvedStyle;
+};
+
+type SvgElement = LineRun | CircleElement | ArcElement;
+
+function getSegmentBounds(segment: Segment): Point[] {
+  if (segment.type === 'line') {
+    return [
+      [segment.x1, segment.y1],
+      [segment.x2, segment.y2],
+    ];
+  }
+
+  if (segment.type === 'circle') {
+    return [
+      [segment.cx - segment.radius, segment.cy - segment.radius],
+      [segment.cx + segment.radius, segment.cy + segment.radius],
+    ];
+  }
+
+  if (segment.type === 'arc') {
+    const x1 = segment.cx + Math.cos(segment.startAngle) * segment.radius;
+    const y1 = segment.cy + Math.sin(segment.startAngle) * segment.radius;
+    const x2 = segment.cx + Math.cos(segment.endAngle) * segment.radius;
+    const y2 = segment.cy + Math.sin(segment.endAngle) * segment.radius;
+    return [
+      [x1, y1],
+      [x2, y2],
+      [segment.cx - segment.radius, segment.cy - segment.radius],
+      [segment.cx + segment.radius, segment.cy + segment.radius],
+    ];
+  }
+
+  return [];
+}
+
+function resolveSegmentStyle(
+  result: LogoResult,
+  segment: Segment,
+): ResolvedStyle {
   return {
     strokeWidth: segment.style?.strokeWidth ?? result.style.strokeWidth,
     strokeLinecap: segment.style?.strokeLinecap ?? result.style.strokeLinecap,
     strokeLinejoin:
       segment.style?.strokeLinejoin ?? result.style.strokeLinejoin,
-    connectSegments: segment.style?.connectSegments ?? result.style.connectSegments,
+    connectSegments:
+      segment.style?.connectSegments ?? result.style.connectSegments,
     glow: segment.style?.glow ?? result.style.glow,
   };
 }
 
-function segmentStylesMatch(a: SegmentRun['style'], b: SegmentRun['style']) {
+function stylesMatch(a: ResolvedStyle, b: ResolvedStyle) {
   return (
     a.strokeWidth === b.strokeWidth &&
     a.strokeLinecap === b.strokeLinecap &&
@@ -72,36 +133,69 @@ function pointsMatch(a: Point, b: Point) {
   );
 }
 
-function buildConnectedRuns(result: LogoResult) {
-  const runs: SegmentRun[] = [];
+function buildSvgElements(result: LogoResult): SvgElement[] {
+  const elements: SvgElement[] = [];
 
   for (const segment of result.segments) {
-    const start: Point = [segment.x1, segment.y1];
-    const end: Point = [segment.x2, segment.y2];
     const style = resolveSegmentStyle(result, segment);
-    const run = runs.at(-1);
 
-    if (!style.connectSegments) {
-      runs.push({ points: [start, end], color: segment.color, style });
+    if (segment.type === 'circle') {
+      elements.push({
+        type: 'circle',
+        cx: segment.cx,
+        cy: segment.cy,
+        radius: segment.radius,
+        color: segment.color,
+        style,
+      });
       continue;
     }
 
+    if (segment.type === 'arc') {
+      elements.push({
+        type: 'arc',
+        cx: segment.cx,
+        cy: segment.cy,
+        radius: segment.radius,
+        startAngle: segment.startAngle,
+        endAngle: segment.endAngle,
+        direction: segment.direction,
+        color: segment.color,
+        style,
+      });
+      continue;
+    }
+
+    // Line segment - try to connect with previous line run
+    const points: Point[] = [
+      [segment.x1, segment.y1],
+      [segment.x2, segment.y2],
+    ];
+    const lastElement = elements.at(-1);
+
     if (
-      run &&
-      run.color === segment.color &&
-      segmentStylesMatch(run.style, style)
+      style.connectSegments &&
+      lastElement &&
+      lastElement.type === 'line-run' &&
+      lastElement.color === segment.color &&
+      stylesMatch(lastElement.style, style)
     ) {
-      const lastPoint = run.points[run.points.length - 1];
-      if (pointsMatch(lastPoint, start)) {
-        run.points.push(end);
+      const lastPoint = lastElement.points[lastElement.points.length - 1];
+      if (pointsMatch(lastPoint, points[0])) {
+        lastElement.points.push(points[1]);
         continue;
       }
     }
 
-    runs.push({ points: [start, end], color: segment.color, style });
+    elements.push({
+      type: 'line-run',
+      points,
+      color: segment.color,
+      style,
+    });
   }
 
-  return runs;
+  return elements;
 }
 
 function expandBounds(bounds: SketchBounds, [x, y]: Point) {
@@ -115,8 +209,8 @@ function getSketchBounds(result: LogoResult, turtlePoints: Point[]) {
   const bounds = { ...DEFAULT_BOUNDS };
 
   result.segments.forEach((segment) => {
-    expandBounds(bounds, [segment.x1, segment.y1]);
-    expandBounds(bounds, [segment.x2, segment.y2]);
+    const points = getSegmentBounds(segment);
+    points.forEach((point) => expandBounds(bounds, point));
   });
 
   turtlePoints.forEach((point) => expandBounds(bounds, point));
@@ -127,6 +221,53 @@ function getSketchBounds(result: LogoResult, turtlePoints: Point[]) {
     width: Math.ceil(bounds.maxX) - Math.floor(bounds.minX),
     height: Math.ceil(bounds.maxY) - Math.floor(bounds.minY),
   };
+}
+
+function renderSvgElement(
+  element: SvgElement,
+  defaultColor: string,
+  strokeColorOverride?: string,
+): string {
+  const stroke = strokeColorOverride ?? element.color ?? defaultColor;
+  const styleAttr = element.style.glow
+    ? ` style="filter: drop-shadow(0 0 4px ${stroke}bf)"`
+    : '';
+
+  if (element.type === 'circle') {
+    return `<circle cx="${element.cx.toFixed(2)}" cy="${element.cy.toFixed(2)}" r="${element.radius.toFixed(2)}" stroke="${stroke}" stroke-width="${element.style.strokeWidth.toFixed(2)}"${styleAttr} />`;
+  }
+
+  if (element.type === 'arc') {
+    const x1 = element.cx + Math.cos(element.startAngle) * element.radius;
+    const y1 = element.cy + Math.sin(element.startAngle) * element.radius;
+    const x2 = element.cx + Math.cos(element.endAngle) * element.radius;
+    const y2 = element.cy + Math.sin(element.endAngle) * element.radius;
+
+    // Calculate arc sweep angle
+    let adjustedEnd = element.endAngle;
+    if (element.direction > 0) {
+      while (adjustedEnd <= element.startAngle) adjustedEnd += Math.PI * 2;
+    } else {
+      while (adjustedEnd >= element.startAngle) adjustedEnd -= Math.PI * 2;
+    }
+    const delta = Math.abs(adjustedEnd - element.startAngle);
+
+    const largeArcFlag = delta > Math.PI ? 1 : 0;
+    const sweepFlag = element.direction === 1 ? 1 : 0;
+
+    return `<path d="M ${x1.toFixed(2)},${y1.toFixed(2)} A ${element.radius.toFixed(2)},${element.radius.toFixed(2)} 0 ${largeArcFlag} ${sweepFlag} ${x2.toFixed(2)},${y2.toFixed(2)}" stroke="${stroke}" stroke-width="${element.style.strokeWidth.toFixed(2)}" stroke-linecap="${element.style.strokeLinecap}" stroke-linejoin="${element.style.strokeLinejoin}"${styleAttr} />`;
+  }
+
+  // Line run
+  if (element.points.length > 2) {
+    const points = element.points
+      .map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`)
+      .join(' ');
+    return `<polyline points="${points}" stroke="${stroke}" stroke-width="${element.style.strokeWidth.toFixed(2)}" stroke-linecap="${element.style.strokeLinecap}" stroke-linejoin="${element.style.strokeLinejoin}"${styleAttr} />`;
+  }
+
+  const [start, end] = element.points;
+  return `<line x1="${start[0].toFixed(2)}" y1="${start[1].toFixed(2)}" x2="${end[0].toFixed(2)}" y2="${end[1].toFixed(2)}" stroke="${stroke}" stroke-width="${element.style.strokeWidth.toFixed(2)}" stroke-linecap="${element.style.strokeLinecap}" stroke-linejoin="${element.style.strokeLinejoin}"${styleAttr} />`;
 }
 
 export function createSvgMarkup(
@@ -159,23 +300,11 @@ export function createSvgMarkup(
     .map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`)
     .join(' ');
 
-  const pathMarkup = buildConnectedRuns(result)
-    .map((run) => {
-      const stroke = strokeColorOverride ?? run.color ?? result.style.pathColor;
-      const styleAttr = run.style.glow
-        ? ` style="filter: drop-shadow(0 0 4px ${stroke}bf)"`
-        : '';
-
-      if (run.points.length > 2) {
-        const points = run.points
-          .map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`)
-          .join(' ');
-        return `<polyline points="${points}" stroke="${stroke}" stroke-width="${run.style.strokeWidth.toFixed(2)}" stroke-linecap="${run.style.strokeLinecap}" stroke-linejoin="${run.style.strokeLinejoin}"${styleAttr} />`;
-      }
-
-      const [start, end] = run.points;
-      return `<line x1="${start[0].toFixed(2)}" y1="${start[1].toFixed(2)}" x2="${end[0].toFixed(2)}" y2="${end[1].toFixed(2)}" stroke="${stroke}" stroke-width="${run.style.strokeWidth.toFixed(2)}" stroke-linecap="${run.style.strokeLinecap}" stroke-linejoin="${run.style.strokeLinejoin}"${styleAttr} />`;
-    })
+  const elements = buildSvgElements(result);
+  const pathMarkup = elements
+    .map((element) =>
+      renderSvgElement(element, result.style.pathColor, strokeColorOverride),
+    )
     .join('\n    ');
 
   const backgroundMarkup = includeBackground

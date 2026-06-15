@@ -211,15 +211,43 @@ function getJoinPoint(
   return intersection ?? offsetPoint(currentPoint, nextNormal, amount);
 }
 
+function convertSegmentToPoints(segment: Segment): Point[] {
+  if (segment.type === 'line') {
+    return [
+      [segment.x1, segment.y1],
+      [segment.x2, segment.y2],
+    ];
+  }
+
+  if (segment.type === 'circle') {
+    return buildArcPoints(
+      [segment.cx, segment.cy],
+      segment.radius,
+      0,
+      Math.PI * 2,
+      1,
+    );
+  }
+
+  if (segment.type === 'arc') {
+    return buildArcPoints(
+      [segment.cx, segment.cy],
+      segment.radius,
+      segment.startAngle,
+      segment.endAngle,
+      segment.direction,
+    );
+  }
+
+  return [];
+}
+
 function buildStrokePaths(result: LogoResult) {
   if (!result.style.connectSegments) {
     return result.segments
       .map((segment) => ({
-        points: dedupeSequentialPoints([
-          [segment.x1, segment.y1],
-          [segment.x2, segment.y2],
-        ]),
-        closed: false,
+        points: dedupeSequentialPoints(convertSegmentToPoints(segment)),
+        closed: segment.type === 'circle',
       }))
       .filter((path) => path.points.length >= 2);
   }
@@ -227,8 +255,9 @@ function buildStrokePaths(result: LogoResult) {
   const paths: Array<{ points: Point[]; color: string | undefined }> = [];
 
   result.segments.forEach((segment) => {
-    const start: Point = [segment.x1, segment.y1];
-    const end: Point = [segment.x2, segment.y2];
+    const points = convertSegmentToPoints(segment);
+    const start: Point = points[0];
+    const end: Point = points[points.length - 1];
     const color = segment.color ?? result.style.pathColor;
     const current = paths.at(-1);
 
@@ -237,11 +266,11 @@ function buildStrokePaths(result: LogoResult) {
       current.color === color &&
       pointsMatch(current.points[current.points.length - 1], start)
     ) {
-      current.points.push(end);
+      current.points.push(...points.slice(1));
       return;
     }
 
-    paths.push({ points: [start, end], color });
+    paths.push({ points, color });
   });
 
   return paths

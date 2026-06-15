@@ -38,14 +38,21 @@ describe('interpretLogo', () => {
 
     expect(result.errors).toEqual([]);
     expect(result.segments).toHaveLength(2);
-    expectPoint(result.segments[0].x1, 0);
-    expectPoint(result.segments[0].y1, 0);
-    expectPoint(result.segments[0].x2, 0);
-    expectPoint(result.segments[0].y2, -10);
-    expectPoint(result.segments[1].x1, 0);
-    expectPoint(result.segments[1].y1, -10);
-    expectPoint(result.segments[1].x2, 5);
-    expectPoint(result.segments[1].y2, -10);
+    expect(result.segments[0].type).toBe('line');
+    expect(result.segments[1].type).toBe('line');
+    if (
+      result.segments[0].type === 'line' &&
+      result.segments[1].type === 'line'
+    ) {
+      expectPoint(result.segments[0].x1, 0);
+      expectPoint(result.segments[0].y1, 0);
+      expectPoint(result.segments[0].x2, 0);
+      expectPoint(result.segments[0].y2, -10);
+      expectPoint(result.segments[1].x1, 0);
+      expectPoint(result.segments[1].y1, -10);
+      expectPoint(result.segments[1].x2, 5);
+      expectPoint(result.segments[1].y2, -10);
+    }
     expectPoint(result.turtle.x, 5);
     expectPoint(result.turtle.y, -10);
     expectPoint(result.turtle.heading, 90);
@@ -56,9 +63,14 @@ describe('interpretLogo', () => {
 
     expect(result.errors).toEqual([]);
     expect(result.segments).toHaveLength(2);
-    expectPoint(result.segments[0].y2, -10);
-    expectPoint(result.segments[1].y1, -30);
-    expectPoint(result.segments[1].y2, -25);
+    if (
+      result.segments[0].type === 'line' &&
+      result.segments[1].type === 'line'
+    ) {
+      expectPoint(result.segments[0].y2, -10);
+      expectPoint(result.segments[1].y1, -30);
+      expectPoint(result.segments[1].y2, -25);
+    }
   });
 
   it('supports repeat blocks and case-insensitive long command names', () => {
@@ -76,10 +88,13 @@ describe('interpretLogo', () => {
 
     expect(result.errors).toEqual([]);
     expect(result.segments).toHaveLength(1);
-    expectPoint(result.segments[0].x1, 0);
-    expectPoint(result.segments[0].y1, 0);
-    expectPoint(result.segments[0].x2, 0);
-    expectPoint(result.segments[0].y2, -5);
+    expect(result.segments[0].type).toBe('line');
+    if (result.segments[0].type === 'line') {
+      expectPoint(result.segments[0].x1, 0);
+      expectPoint(result.segments[0].y1, 0);
+      expectPoint(result.segments[0].x2, 0);
+      expectPoint(result.segments[0].y2, -5);
+    }
     expect(result.turtle.penDown).toBe(true);
   });
 
@@ -122,8 +137,13 @@ END
 OUTLINE FOO
 `);
 
-    const xs = result.segments.flatMap((segment) => [segment.x1, segment.x2]);
-    const ys = result.segments.flatMap((segment) => [segment.y1, segment.y2]);
+    const lineSegments = result.segments.filter((s) => s.type === 'line');
+    const xs = lineSegments.flatMap((segment) =>
+      segment.type === 'line' ? [segment.x1, segment.x2] : [],
+    );
+    const ys = lineSegments.flatMap((segment) =>
+      segment.type === 'line' ? [segment.y1, segment.y2] : [],
+    );
 
     expect(result.errors).toEqual([]);
     expect(result.segments).toHaveLength(4);
@@ -234,7 +254,10 @@ FD $D / 5
 
     expect(result.errors).toEqual([]);
     expect(result.segments).toHaveLength(1);
-    expectPoint(result.segments[0].y2, -4);
+    expect(result.segments[0].type).toBe('line');
+    if (result.segments[0].type === 'line') {
+      expectPoint(result.segments[0].y2, -4);
+    }
     expectPoint(result.turtle.x, 0);
     expectPoint(result.turtle.y, -4);
     expectPoint(result.turtle.heading, 0);
@@ -278,8 +301,97 @@ FD $D / 5
 
     expect(result.errors).toEqual([]);
     expect(result.segments).toHaveLength(2);
-    expectPoint(result.segments[0].y2, -10);
-    expectPoint(result.segments[1].x2, 5);
+    if (
+      result.segments[0].type === 'line' &&
+      result.segments[1].type === 'line'
+    ) {
+      expectPoint(result.segments[0].y2, -10);
+      expectPoint(result.segments[1].x2, 5);
+    }
+  });
+
+  it('arcs are tangent to turtle heading for smooth curves', () => {
+    const result = interpretLogo('FD 100 ARCR 100 100');
+
+    expect(result.errors).toEqual([]);
+    expect(result.segments).toHaveLength(2);
+    expect(result.segments[0].type).toBe('line');
+    expect(result.segments[1].type).toBe('arc');
+
+    if (result.segments[1].type === 'arc') {
+      const arc = result.segments[1];
+
+      // Arc should start at (0, -100) with radius 100
+      expectPoint(arc.cx, 100);
+      expectPoint(arc.cy, -100);
+      expectPoint(arc.radius, 100);
+
+      // ARCR: turtle goes CCW around center (angles increase, direction > 0)
+      expect(arc.direction).toBeGreaterThan(0);
+
+      // endAngle = startAngle + 100° (angles increase for right turn)
+      const expectedEndAngle = Math.PI + (100 * Math.PI) / 180;
+      expectPoint(arc.endAngle, expectedEndAngle);
+    }
+  });
+
+  it('smooth curve: forward, arc, forward creates continuous path', () => {
+    // The user's test case: fd 100 arcr 100 100 fd 100
+    // Expected behavior:
+    // 1. Go north 100 units to (0, -100)
+    // 2. Turn right (clockwise) 100 degrees with radius 100
+    //    - Should curve to the right (eastward) smoothly
+    //    - Should end mostly north and east of start
+    // 3. Continue ESE (heading 100°) for 100 units
+    const result = interpretLogo('FD 100 ARCR 100 100 FD 100');
+
+    expect(result.errors).toEqual([]);
+    expect(result.segments).toHaveLength(3);
+
+    const line1 = result.segments[0];
+    const arc = result.segments[1];
+    const line2 = result.segments[2];
+
+    // Line 1: origin to (0, -100) heading north
+    expect(line1.type).toBe('line');
+    if (line1.type === 'line') {
+      expectPoint(line1.x1, 0);
+      expectPoint(line1.y1, 0);
+      expectPoint(line1.x2, 0);
+      expectPoint(line1.y2, -100);
+    }
+
+    // Arc: right turn from (0, -100), should move north and east
+    expect(arc.type).toBe('arc');
+    if (arc.type === 'arc') {
+      // Center must be perpendicular to the right: at heading 0, that's +x direction
+      // So center is east of turtle: (100, -100)
+      expectPoint(arc.cx, 100);
+      expectPoint(arc.cy, -100);
+      expectPoint(arc.radius, 100);
+
+      // startAngle is from center to turtle: atan2(-100-(-100), 0-100) = atan2(0, -100) = π
+      expectPoint(arc.startAngle, Math.PI);
+
+      // For a right turn from heading north, turtle goes CW around the center
+      // This means angles INCREASE (turtle at west of center, goes north then east)
+      // endAngle should be π + 100° (going CCW in atan2 angle space)
+      const expectedEndAngle = Math.PI + (100 * Math.PI) / 180;
+      expectPoint(arc.endAngle, expectedEndAngle);
+
+      // SVG direction convention: 1 = CCW in atan2 space = turtle turns right
+      expect(arc.direction).toBe(1);
+    }
+
+    // Final turtle state
+    expectPoint(result.turtle.heading, 100); // ESE
+
+    // Turtle should end north and east of arc start
+    expect(result.turtle.y).toBeLessThan(-100); // more north (smaller y)
+    expect(result.turtle.x).toBeGreaterThan(0); // more east (larger x)
+
+    // Line 2: should continue ESE from end of arc
+    expect(line2.type).toBe('line');
   });
 });
 
@@ -387,8 +499,13 @@ FD 100
       renderLogoStack('SB square\nSBV width 50\nFD 100').value,
     );
     const outlined = renderLogoStack(outlinedSource).value;
-    const xs = outlined.segments.flatMap((segment) => [segment.x1, segment.x2]);
-    const ys = outlined.segments.flatMap((segment) => [segment.y1, segment.y2]);
+    const lineSegments = outlined.segments.filter((s) => s.type === 'line');
+    const xs = lineSegments.flatMap((segment) =>
+      segment.type === 'line' ? [segment.x1, segment.x2] : [],
+    );
+    const ys = lineSegments.flatMap((segment) =>
+      segment.type === 'line' ? [segment.y1, segment.y2] : [],
+    );
 
     expect(outlined.errors).toEqual([]);
     expect(outlined.segments).toHaveLength(4);
@@ -408,9 +525,11 @@ FD 100
     expect(outlined.segments.length).toBeGreaterThan(0);
 
     outlined.segments.forEach((segment) => {
-      const isVertical = Math.abs(segment.x1 - segment.x2) <= epsilon;
-      const isHorizontal = Math.abs(segment.y1 - segment.y2) <= epsilon;
-      expect(isVertical || isHorizontal).toBe(true);
+      if (segment.type === 'line') {
+        const isVertical = Math.abs(segment.x1 - segment.x2) <= epsilon;
+        const isHorizontal = Math.abs(segment.y1 - segment.y2) <= epsilon;
+        expect(isVertical || isHorizontal).toBe(true);
+      }
     });
   });
 });
