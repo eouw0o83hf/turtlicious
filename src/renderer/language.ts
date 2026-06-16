@@ -48,6 +48,10 @@ export const COMMAND_NAMES = [
   'HOME',
   'CLEARSCREEN',
   'CS',
+  'HIDETURTLE',
+  'HT',
+  'SHOWTURTLE',
+  'ST',
   'SETBRUSH',
   'SB',
   'SETBRUSHWIDTH',
@@ -111,12 +115,7 @@ export const COLOR_LOGO_GREEN = '#33ff33';
 /**
  * Maximum number of iterations allowed in a REPEAT block.
  */
-export const MAX_REPEAT_COUNT = 1000;
-
-/**
- * Maximum number of turtle steps before halting execution.
- */
-export const MAX_STEPS = 25_000;
+export const MAX_REPEAT_COUNT = 10_000;
 
 /**
  * Maximum call depth for procedure recursion.
@@ -341,6 +340,22 @@ export const COMMANDS: CommandSpec[] = [
     parameters: [],
     example: 'CS',
   },
+  {
+    name: 'HIDETURTLE',
+    aliases: ['HT'],
+    category: 'turtle',
+    description: 'Hide the turtle cursor without affecting drawing.',
+    parameters: [],
+    example: 'HT',
+  },
+  {
+    name: 'SHOWTURTLE',
+    aliases: ['ST'],
+    category: 'turtle',
+    description: 'Show the turtle cursor.',
+    parameters: [],
+    example: 'ST',
+  },
 
   // Style Commands
   {
@@ -508,7 +523,7 @@ export function getPenCommands(): CommandName[] {
  * Turtle state commands (non-movement).
  */
 export function getTurtleCommands(): CommandName[] {
-  return ['HOME', 'CS', 'CLEARSCREEN'];
+  return ['HOME', 'CS', 'CLEARSCREEN', 'HT', 'HIDETURTLE', 'ST', 'SHOWTURTLE'];
 }
 
 /**

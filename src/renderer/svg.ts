@@ -279,21 +279,24 @@ export function createSvgMarkup(
     includeBackground = true,
     strokeColorOverride,
   } = options;
+  const showTurtle = includeTurtle && result.turtle.visible;
   const turtleRadians = (result.turtle.heading * Math.PI) / 180;
-  const turtlePoints: Point[] = [
-    [
-      result.turtle.x + Math.sin(turtleRadians) * 13,
-      result.turtle.y - Math.cos(turtleRadians) * 13,
-    ],
-    [
-      result.turtle.x + Math.sin(turtleRadians + 2.45) * 9,
-      result.turtle.y - Math.cos(turtleRadians + 2.45) * 9,
-    ],
-    [
-      result.turtle.x + Math.sin(turtleRadians - 2.45) * 9,
-      result.turtle.y - Math.cos(turtleRadians - 2.45) * 9,
-    ],
-  ];
+  const turtlePoints: Point[] = showTurtle
+    ? [
+        [
+          result.turtle.x + Math.sin(turtleRadians) * 13,
+          result.turtle.y - Math.cos(turtleRadians) * 13,
+        ],
+        [
+          result.turtle.x + Math.sin(turtleRadians + 2.45) * 9,
+          result.turtle.y - Math.cos(turtleRadians + 2.45) * 9,
+        ],
+        [
+          result.turtle.x + Math.sin(turtleRadians - 2.45) * 9,
+          result.turtle.y - Math.cos(turtleRadians - 2.45) * 9,
+        ],
+      ]
+    : [];
 
   const viewBox = getSketchBounds(result, turtlePoints);
   const turtlePointMarkup = turtlePoints
@@ -311,7 +314,7 @@ export function createSvgMarkup(
     ? `<rect x="${viewBox.minX}" y="${viewBox.minY}" width="${viewBox.width}" height="${viewBox.height}" fill="#000000" />`
     : '';
 
-  const turtleMarkup = includeTurtle
+  const turtleMarkup = showTurtle
     ? `<polygon points="${turtlePointMarkup}" fill="${result.style.turtleColor}" opacity="0.9" />`
     : '';
 

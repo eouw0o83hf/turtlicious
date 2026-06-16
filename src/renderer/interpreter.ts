@@ -22,7 +22,6 @@ import {
   DEFAULT_PROGRAM,
   DEFAULT_STYLE,
   MAX_REPEAT_COUNT,
-  MAX_STEPS,
   MAX_CALL_DEPTH,
   LINE_BREAK,
   COMMENT_STRIP_PATTERN,
@@ -305,6 +304,7 @@ function cloneTurtleState(turtle: Turtle): Turtle {
     y: turtle.y,
     heading: turtle.heading,
     penDown: turtle.penDown,
+    visible: turtle.visible,
   };
 }
 
@@ -356,7 +356,7 @@ export function interpretLogo(
 ): LogoResult {
   const tokens = tokenizeLogo(source);
   const program = parseProgram(tokens);
-  const turtle: Turtle = { x: 0, y: 0, heading: 0, penDown: true };
+  const turtle: Turtle = { x: 0, y: 0, heading: 0, penDown: true, visible: true };
   const segments: Segment[] = [];
   const errors: string[] = [...program.errors];
   const variables = new Map<string, number | string>();
@@ -453,7 +453,7 @@ export function interpretLogo(
 
     let index = start;
 
-    while (index < end && stepCount < MAX_STEPS) {
+    while (index < end) {
       const token = stream[index];
       if (!token || token === LINE_BREAK) {
         index += 1;
@@ -530,6 +530,7 @@ export function interpretLogo(
           turtle.y = turtleSnapshot.y;
           turtle.heading = turtleSnapshot.heading;
           turtle.penDown = turtleSnapshot.penDown;
+          turtle.visible = turtleSnapshot.visible;
           restoreVariables(variables, variablesSnapshot);
           brushState.name = brushSnapshot.name;
           brushState.config = cloneBrushConfig(brushSnapshot.config);
@@ -621,7 +622,7 @@ export function interpretLogo(
 
         for (
           let repeatIndex = 0;
-          repeatIndex < repeatCount && stepCount < MAX_STEPS;
+          repeatIndex < repeatCount;
           repeatIndex += 1
         ) {
           executeRange(stream, openIndex + 1, closeIndex, callDepth + 1);
@@ -866,6 +867,18 @@ export function interpretLogo(
         continue;
       }
 
+      if (matchesCommand(command, 'HT', 'HIDETURTLE')) {
+        turtle.visible = false;
+        index += 1;
+        continue;
+      }
+
+      if (matchesCommand(command, 'ST', 'SHOWTURTLE')) {
+        turtle.visible = true;
+        index += 1;
+        continue;
+      }
+
       if (matchesCommand(command, ...getProcedureCommands())) {
         if (matchesCommand(command, 'OUTLINE')) {
           const procedureNameToken = stream[index + 1];
@@ -932,6 +945,7 @@ export function interpretLogo(
           turtle.y = turtleSnapshot.y;
           turtle.heading = turtleSnapshot.heading;
           turtle.penDown = turtleSnapshot.penDown;
+          turtle.visible = turtleSnapshot.visible;
           restoreVariables(variables, variablesSnapshot);
           brushState.name = brushSnapshot.name;
           brushState.config = cloneBrushConfig(brushSnapshot.config);
@@ -1003,10 +1017,6 @@ export function interpretLogo(
   };
 
   executeRange(program.mainTokens, 0, program.mainTokens.length);
-
-  if (stepCount >= MAX_STEPS) {
-    errors.push(`Stopped after ${MAX_STEPS.toLocaleString()} turtle steps.`);
-  }
 
   return {
     segments,

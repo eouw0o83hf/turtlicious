@@ -8,6 +8,7 @@ export type Turtle = {
   y: number;
   heading: number;
   penDown: boolean;
+  visible: boolean;
 };
 
 /** Internal 2-D coordinate helper. */

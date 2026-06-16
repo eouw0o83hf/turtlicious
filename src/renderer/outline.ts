@@ -581,7 +581,7 @@ export function createOutlineProgramFromSegments(
     style,
     errors: [],
     stepCount: 0,
-    turtle: { x: 0, y: 0, heading: 0, penDown: true },
+    turtle: { x: 0, y: 0, heading: 0, penDown: true, visible: true },
     brushState: {
       name: 'square',
       config: { square: { width: 5, smooth: false } },
